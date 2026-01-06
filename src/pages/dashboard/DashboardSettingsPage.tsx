@@ -21,6 +21,8 @@ import {
   AlertCircle,
   Link as LinkIcon,
   RefreshCw,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +36,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useCustomDomains, CustomDomain } from '@/hooks/useCustomDomains';
+import { DnsInstructions } from '@/components/domain/DnsInstructions';
+import { DomainStatusAlert } from '@/components/domain/DomainStatusAlert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -53,6 +57,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 type CanonicalPreference = 'www' | 'non-www' | 'auto';
 
@@ -101,6 +110,8 @@ export default function DashboardSettingsPage({
   const [currentVerificationToken, setCurrentVerificationToken] = useState<string>('');
   const [canonicalPreference, setCanonicalPreference] = useState<CanonicalPreference>('non-www');
   const [forceHttps, setForceHttps] = useState(true);
+  const [expandedDomainId, setExpandedDomainId] = useState<string | null>(null);
+  const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -348,6 +359,17 @@ export default function DashboardSettingsPage({
     }
   };
 
+  const handleVerifyDomainClick = async (domainId: string) => {
+    setVerifyingDomainId(domainId);
+    const result = await verifyDomain(domainId);
+    if (result.success) {
+      toast.success('Domain verified successfully!');
+    } else {
+      toast.error(result.error || 'Verification failed. Check your DNS configuration.');
+    }
+    setVerifyingDomainId(null);
+  };
+
   const copyDnsRecord = (value: string) => {
     navigator.clipboard.writeText(value);
     toast.success('Copied to clipboard!');
@@ -442,46 +464,89 @@ export default function DashboardSettingsPage({
                       Connect your own domain to your profile for a professional look.
                     </p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {domains.map((domain) => (
-                        <div 
+                        <Collapsible 
                           key={domain.id}
-                          className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                          open={expandedDomainId === domain.id}
+                          onOpenChange={(open) => setExpandedDomainId(open ? domain.id : null)}
                         >
-                          <div className="flex items-center gap-3">
-                            <Globe className="w-4 h-4 text-muted-foreground" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-sm">{domain.domain}</span>
-                                {domain.is_primary && (
-                                  <Badge variant="secondary" className="text-xs">Primary</Badge>
-                                )}
+                          <div className="bg-secondary rounded-lg overflow-hidden">
+                            <div className="flex items-center justify-between p-3">
+                              <div className="flex items-center gap-3">
+                                <Globe className="w-4 h-4 text-muted-foreground" />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm">{domain.domain}</span>
+                                    {domain.is_primary && (
+                                      <Badge variant="secondary" className="text-xs">Primary</Badge>
+                                    )}
+                                  </div>
+                                  <div className="mt-1">
+                                    {getDomainStatusBadge(domain.status)}
+                                  </div>
+                                </div>
                               </div>
-                              <div className="mt-1">
-                                {getDomainStatusBadge(domain.status)}
+                              <div className="flex items-center gap-2">
+                                {domain.status !== 'active' && (
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm">
+                                      {expandedDomainId === domain.id ? (
+                                        <>
+                                          <ChevronUp className="w-4 h-4 mr-1" />
+                                          Hide DNS
+                                        </>
+                                      ) : (
+                                        <>
+                                          <ChevronDown className="w-4 h-4 mr-1" />
+                                          Show DNS
+                                        </>
+                                      )}
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                )}
+                                {!domain.is_primary && domain.status === 'active' && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    onClick={() => handleSetPrimaryClick(domain.id, domain.domain)}
+                                  >
+                                    Set Primary
+                                  </Button>
+                                )}
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleRemoveDomainClick(domain.id)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </div>
                             </div>
+                            
+                            <CollapsibleContent>
+                              <div className="px-3 pb-4 space-y-4 border-t border-border/50 pt-4">
+                                {/* Domain Status Alert */}
+                                <DomainStatusAlert 
+                                  domain={domain}
+                                  onVerify={() => handleVerifyDomainClick(domain.id)}
+                                  onRetry={() => handleVerifyDomainClick(domain.id)}
+                                  isVerifying={verifyingDomainId === domain.id}
+                                />
+                                
+                                {/* DNS Instructions */}
+                                <DnsInstructions
+                                  domain={domain.domain}
+                                  verificationToken={domain.verification_token || `lovable_verify_${profile?.id?.slice(0, 8) || 'ABC123'}`}
+                                  showVerificationStatus={true}
+                                  aRecordVerified={domain.dns_verified}
+                                  txtRecordVerified={domain.dns_verified}
+                                />
+                              </div>
+                            </CollapsibleContent>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {!domain.is_primary && domain.status === 'active' && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm"
-                                onClick={() => handleSetPrimaryClick(domain.id, domain.domain)}
-                              >
-                                Set Primary
-                              </Button>
-                            )}
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleRemoveDomainClick(domain.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
+                        </Collapsible>
                       ))}
                     </div>
                   )}
@@ -1040,52 +1105,11 @@ export default function DashboardSettingsPage({
           )}
 
           {domainStep === 'dns' && (
-            <div className="space-y-4 py-4">
-              <div className="p-4 bg-secondary rounded-lg space-y-4">
-                <div>
-                  <Label className="text-xs text-muted-foreground">A Record (Root Domain & WWW)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono">
-                      @ → 185.158.133.1
-                    </code>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => copyDnsRecord('185.158.133.1')}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-2 mt-2">
-                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono">
-                      www → 185.158.133.1
-                    </code>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => copyDnsRecord('185.158.133.1')}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-xs text-muted-foreground">TXT Record (Verification)</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono truncate">
-                      _lovable → lovable_verify={profile?.id?.slice(0, 8) || 'ABC123'}
-                    </code>
-                    <Button 
-                      variant="ghost" 
-                      size="icon"
-                      onClick={() => copyDnsRecord(`lovable_verify=${profile?.id?.slice(0, 8) || 'ABC123'}`)}
-                    >
-                      <Copy className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
+            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+              <DnsInstructions
+                domain={customDomain.trim()}
+                verificationToken={`lovable_verify_${profile?.id?.slice(0, 8) || 'ABC123'}`}
+              />
 
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                 <div className="flex gap-2">
@@ -1093,16 +1117,8 @@ export default function DashboardSettingsPage({
                   <div className="text-sm">
                     <p className="font-medium text-foreground">DNS Propagation</p>
                     <p className="text-muted-foreground">
-                      DNS changes can take up to 72 hours to propagate. Use{' '}
-                      <a 
-                        href="https://dnschecker.org" 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary hover:underline"
-                      >
-                        DNSChecker.org
-                      </a>{' '}
-                      to verify your settings.
+                      DNS changes can take up to 72 hours to propagate. We'll automatically check your 
+                      DNS configuration and notify you when verified.
                     </p>
                   </div>
                 </div>
