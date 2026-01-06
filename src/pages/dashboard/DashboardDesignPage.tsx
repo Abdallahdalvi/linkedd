@@ -32,13 +32,19 @@ interface DashboardDesignPageProps {
   onUpdateProfile: (updates: any) => Promise<void>;
 }
 
-const themePresets = [
-  { id: 'default', name: 'Default', bg: '#ffffff', text: '#1a1a1a', accent: '#6366f1' },
-  { id: 'dark', name: 'Dark', bg: '#1a1a2e', text: '#ffffff', accent: '#6366f1' },
-  { id: 'ocean', name: 'Ocean', bg: '#0f172a', text: '#ffffff', accent: '#0ea5e9' },
-  { id: 'forest', name: 'Forest', bg: '#14532d', text: '#ffffff', accent: '#22c55e' },
-  { id: 'sunset', name: 'Sunset', bg: '#451a03', text: '#ffffff', accent: '#f97316' },
-  { id: 'rose', name: 'Rose', bg: '#fdf2f8', text: '#831843', accent: '#ec4899' },
+export const themePresets = [
+  { id: 'default', name: 'Default', bg: '#ffffff', text: '#1a1a1a', accent: '#6366f1', cardBg: '#f8fafc' },
+  { id: 'dark', name: 'Dark', bg: '#1a1a2e', text: '#ffffff', accent: '#6366f1', cardBg: '#2d2d44' },
+  { id: 'ocean', name: 'Ocean', bg: '#0f172a', text: '#ffffff', accent: '#0ea5e9', cardBg: '#1e293b' },
+  { id: 'forest', name: 'Forest', bg: '#14532d', text: '#ffffff', accent: '#22c55e', cardBg: '#166534' },
+  { id: 'sunset', name: 'Sunset', bg: '#451a03', text: '#ffffff', accent: '#f97316', cardBg: '#7c2d12' },
+  { id: 'rose', name: 'Rose', bg: '#fdf2f8', text: '#831843', accent: '#ec4899', cardBg: '#fce7f3' },
+  { id: 'midnight', name: 'Midnight', bg: '#0c0a1d', text: '#e2e8f0', accent: '#a78bfa', cardBg: '#1e1b4b' },
+  { id: 'minimal', name: 'Minimal', bg: '#fafafa', text: '#171717', accent: '#171717', cardBg: '#ffffff' },
+  { id: 'neon', name: 'Neon', bg: '#0a0a0a', text: '#00ff88', accent: '#00ff88', cardBg: '#1a1a1a' },
+  { id: 'lavender', name: 'Lavender', bg: '#f5f3ff', text: '#4c1d95', accent: '#8b5cf6', cardBg: '#ede9fe' },
+  { id: 'coral', name: 'Coral', bg: '#fff7ed', text: '#9a3412', accent: '#fb923c', cardBg: '#ffedd5' },
+  { id: 'arctic', name: 'Arctic', bg: '#f0f9ff', text: '#0c4a6e', accent: '#38bdf8', cardBg: '#e0f2fe' },
 ];
 
 const backgroundTypes = [
@@ -67,6 +73,17 @@ export default function DashboardDesignPage({
   const [buttonRadius, setButtonRadius] = useState([16]);
   const [enableAnimations, setEnableAnimations] = useState(true);
 
+  const currentTheme = themePresets.find(t => t.id === selectedTheme) || themePresets[0];
+
+  // When theme changes, update background to theme's bg color
+  const handleThemeChange = (themeId: string) => {
+    setSelectedTheme(themeId);
+    const theme = themePresets.find(t => t.id === themeId);
+    if (theme && backgroundType === 'solid') {
+      setBackgroundColor(theme.bg);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -77,6 +94,7 @@ export default function DashboardDesignPage({
         custom_colors: {
           buttonRadius: buttonRadius[0],
           animations: enableAnimations,
+          ...currentTheme,
         },
       });
       toast.success('Design settings saved!');
@@ -91,6 +109,12 @@ export default function DashboardDesignPage({
     theme_preset: selectedTheme,
     background_type: backgroundType,
     background_value: backgroundColor,
+    custom_colors: {
+      ...profile?.custom_colors,
+      buttonRadius: buttonRadius[0],
+      animations: enableAnimations,
+      ...currentTheme,
+    },
   };
 
   return (
@@ -162,19 +186,27 @@ export default function DashboardDesignPage({
                   {themePresets.map((theme) => (
                     <button
                       key={theme.id}
-                      onClick={() => setSelectedTheme(theme.id)}
+                      onClick={() => handleThemeChange(theme.id)}
                       className={`relative p-4 rounded-xl border-2 transition-all ${
                         selectedTheme === theme.id 
-                          ? 'border-primary bg-primary/5' 
+                          ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
                       <div 
-                        className="w-full h-20 rounded-lg mb-3 flex items-end p-2"
+                        className="w-full h-20 rounded-lg mb-3 flex flex-col items-center justify-center gap-1 p-2"
                         style={{ backgroundColor: theme.bg }}
                       >
                         <div 
-                          className="w-full h-6 rounded"
+                          className="w-8 h-8 rounded-full border-2"
+                          style={{ backgroundColor: theme.cardBg, borderColor: theme.accent }}
+                        />
+                        <div 
+                          className="w-full h-5 rounded"
+                          style={{ backgroundColor: theme.cardBg }}
+                        />
+                        <div 
+                          className="w-full h-5 rounded"
                           style={{ backgroundColor: theme.accent }}
                         />
                       </div>

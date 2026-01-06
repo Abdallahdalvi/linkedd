@@ -22,6 +22,20 @@ const socialIcons: Record<string, typeof Instagram> = {
   website: Globe,
 };
 
+// Default theme for fallback
+const defaultTheme = { bg: '#ffffff', text: '#1a1a1a', accent: '#6366f1', cardBg: '#f8fafc' };
+
+const getThemeColors = (profile: LinkProfile | null) => {
+  if (!profile?.custom_colors) return defaultTheme;
+  const colors = profile.custom_colors as Record<string, string>;
+  return {
+    bg: colors.bg || defaultTheme.bg,
+    text: colors.text || defaultTheme.text,
+    accent: colors.accent || defaultTheme.accent,
+    cardBg: colors.cardBg || defaultTheme.cardBg,
+  };
+};
+
 export default function MobilePreview({ 
   profile, 
   blocks, 
@@ -29,9 +43,10 @@ export default function MobilePreview({
   darkMode = false 
 }: MobilePreviewProps) {
   const enabledBlocks = blocks.filter(b => b.is_enabled);
+  const theme = getThemeColors(profile);
 
   const getBackgroundStyle = () => {
-    if (!profile) return {};
+    if (!profile) return { backgroundColor: defaultTheme.bg };
     
     switch (profile.background_type) {
       case 'gradient':
@@ -43,7 +58,7 @@ export default function MobilePreview({
           backgroundPosition: 'center'
         };
       default:
-        return { backgroundColor: profile.background_value || '#ffffff' };
+        return { backgroundColor: profile.background_value || theme.bg };
     }
   };
 
@@ -65,33 +80,33 @@ export default function MobilePreview({
               className="flex flex-col items-center"
             >
               {/* Profile Header */}
-              <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
+              <Avatar className="w-20 h-20 border-4 shadow-lg" style={{ borderColor: theme.accent }}>
                 <AvatarImage src={profile.avatar_url || ''} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-2xl font-bold">
+                <AvatarFallback style={{ backgroundColor: theme.accent, color: theme.cardBg }} className="text-2xl font-bold">
                   {profile.display_name?.charAt(0) || profile.username.charAt(0)}
                 </AvatarFallback>
               </Avatar>
 
               <div className="mt-3 text-center">
                 <div className="flex items-center justify-center gap-2">
-                  <h1 className="text-lg font-bold text-foreground">
+                  <h1 className="text-lg font-bold" style={{ color: theme.text }}>
                     {profile.display_name || `@${profile.username}`}
                   </h1>
                   {profile.is_public && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                    <Badge className="text-[10px] px-1.5 py-0" style={{ backgroundColor: theme.accent, color: theme.cardBg }}>
                       ✓
                     </Badge>
                   )}
                 </div>
                 
                 {profile.bio && (
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                  <p className="text-xs mt-1 line-clamp-2 opacity-70" style={{ color: theme.text }}>
                     {profile.bio}
                   </p>
                 )}
 
                 {profile.location && (
-                  <div className="flex items-center justify-center gap-1 mt-1 text-xs text-muted-foreground">
+                  <div className="flex items-center justify-center gap-1 mt-1 text-xs opacity-70" style={{ color: theme.text }}>
                     <MapPin className="w-3 h-3" />
                     <span>{profile.location}</span>
                   </div>
@@ -99,17 +114,18 @@ export default function MobilePreview({
               </div>
 
               {/* Social Icons */}
-              {Object.keys(profile.social_links).length > 0 && (
+              {profile.social_links && Object.keys(profile.social_links).length > 0 && (
                 <div className="flex items-center gap-3 mt-3">
                   {Object.entries(profile.social_links).map(([platform, url]) => {
                     const Icon = socialIcons[platform.toLowerCase()] || Globe;
                     return url ? (
                       <a
                         key={platform}
-                        href={url}
-                        className="w-8 h-8 rounded-full bg-foreground/10 flex items-center justify-center hover:bg-foreground/20 transition-colors"
+                        href={url as string}
+                        className="w-8 h-8 rounded-full flex items-center justify-center transition-colors"
+                        style={{ backgroundColor: `${theme.text}15`, color: theme.text }}
                       >
-                        <Icon className="w-4 h-4 text-foreground" />
+                        <Icon className="w-4 h-4" />
                       </a>
                     ) : null;
                   })}
@@ -126,14 +142,14 @@ export default function MobilePreview({
                     transition={{ delay: index * 0.05 }}
                     className="w-full"
                   >
-                    <BlockPreview block={block} />
+                    <BlockPreview block={block} theme={theme} />
                   </motion.div>
                 ))}
               </div>
 
               {/* Footer */}
               <div className="mt-6 text-center">
-                <p className="text-[10px] text-muted-foreground/50">
+                <p className="text-[10px] opacity-40" style={{ color: theme.text }}>
                   Powered by LinkBio
                 </p>
               </div>
@@ -157,14 +173,28 @@ export default function MobilePreview({
   );
 }
 
-function BlockPreview({ block }: { block: Block }) {
-  const baseClasses = "w-full p-3 rounded-xl bg-card/80 backdrop-blur border border-border/50 transition-all hover:scale-[1.02] hover:shadow-md";
+interface ThemeColors {
+  bg: string;
+  text: string;
+  accent: string;
+  cardBg: string;
+}
+
+function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
+  const cardStyle = {
+    backgroundColor: theme.cardBg,
+    borderColor: `${theme.text}10`,
+    color: theme.text,
+  };
 
   switch (block.type) {
     case 'link':
     case 'cta':
       return (
-        <div className={`${baseClasses} flex items-center gap-3`}>
+        <div 
+          className="w-full p-3 rounded-xl border transition-all hover:scale-[1.02] hover:shadow-md flex items-center gap-3"
+          style={cardStyle}
+        >
           {block.thumbnail_url && (
             <img 
               src={block.thumbnail_url} 
@@ -173,34 +203,37 @@ function BlockPreview({ block }: { block: Block }) {
             />
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-foreground truncate">
+            <h3 className="text-sm font-medium truncate">
               {block.title || 'Untitled Link'}
             </h3>
             {block.subtitle && (
-              <p className="text-xs text-muted-foreground truncate">{block.subtitle}</p>
+              <p className="text-xs truncate opacity-70">{block.subtitle}</p>
             )}
           </div>
-          <ExternalLink className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <ExternalLink className="w-4 h-4 opacity-50 flex-shrink-0" />
         </div>
       );
 
     case 'text':
       return (
-        <div className={baseClasses}>
-          <p className="text-sm text-foreground">{block.title}</p>
+        <div className="w-full p-3 rounded-xl border" style={cardStyle}>
+          <p className="text-sm">{block.title}</p>
         </div>
       );
 
     case 'divider':
       return (
         <div className="py-2">
-          <div className="h-px bg-border" />
+          <div className="h-px" style={{ backgroundColor: `${theme.text}20` }} />
         </div>
       );
 
     case 'featured':
       return (
-        <div className={`${baseClasses} gradient-primary text-primary-foreground p-4`}>
+        <div 
+          className="w-full p-4 rounded-xl transition-all hover:scale-[1.02] hover:shadow-md"
+          style={{ backgroundColor: theme.accent, color: theme.cardBg }}
+        >
           <h3 className="text-sm font-bold">{block.title || 'Featured'}</h3>
           {block.subtitle && (
             <p className="text-xs opacity-90 mt-1">{block.subtitle}</p>
@@ -210,8 +243,8 @@ function BlockPreview({ block }: { block: Block }) {
 
     default:
       return (
-        <div className={baseClasses}>
-          <h3 className="text-sm font-medium text-foreground">
+        <div className="w-full p-3 rounded-xl border" style={cardStyle}>
+          <h3 className="text-sm font-medium">
             {block.title || 'Block'}
           </h3>
         </div>
