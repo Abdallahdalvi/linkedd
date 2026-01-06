@@ -63,7 +63,7 @@ export default function DashboardOverviewPage({
         {profile && (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary">
-              <span className="text-sm text-muted-foreground">linkbio.app/</span>
+              <span className="text-sm text-muted-foreground">{window.location.host}/</span>
               <span className="text-sm font-medium">{profile.username}</span>
             </div>
             <Button variant="outline" size="icon" onClick={copyProfileUrl}>
