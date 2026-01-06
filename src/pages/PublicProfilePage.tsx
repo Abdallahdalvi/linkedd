@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -29,6 +29,36 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+
+// Generate or retrieve a persistent visitor ID
+const getVisitorId = (): string => {
+  const storageKey = 'linksdc_visitor_id';
+  let visitorId = localStorage.getItem(storageKey);
+  if (!visitorId) {
+    visitorId = `v_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+    localStorage.setItem(storageKey, visitorId);
+  }
+  return visitorId;
+};
+
+// Detect browser name
+const getBrowserName = (): string => {
+  const ua = navigator.userAgent;
+  if (ua.includes('Firefox')) return 'Firefox';
+  if (ua.includes('Edg')) return 'Edge';
+  if (ua.includes('Chrome')) return 'Chrome';
+  if (ua.includes('Safari')) return 'Safari';
+  if (ua.includes('Opera') || ua.includes('OPR')) return 'Opera';
+  return 'Other';
+};
+
+// Detect device type
+const getDeviceType = (): string => {
+  const ua = navigator.userAgent;
+  if (/Tablet|iPad/i.test(ua)) return 'tablet';
+  if (/Mobile|Android|iPhone/i.test(ua)) return 'mobile';
+  return 'desktop';
+};
 
 interface Profile {
   id: string;
@@ -148,7 +178,7 @@ export default function PublicProfilePage() {
       // First check if profile exists and if it's password protected
       const { data: profileData, error: profileError } = await supabase
         .from('link_profiles')
-        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, custom_colors, is_public, is_password_protected')
+        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, custom_colors, is_public, is_password_protected, total_views')
         .eq('username', username)
         .eq('is_public', true)
         .maybeSingle();
@@ -181,13 +211,23 @@ export default function PublicProfilePage() {
 
       setProfile(parsedProfile);
 
-      // Track view
-      await supabase.from('analytics_events').insert({
-        profile_id: profileData.id,
-        event_type: 'view',
-        device_type: /Mobi/.test(navigator.userAgent) ? 'mobile' : 'desktop',
-        referrer: document.referrer || null,
-      });
+      // Track view and increment total_views
+      const visitorId = getVisitorId();
+      const newViewCount = (profileData.total_views || 0) + 1;
+      await Promise.all([
+        supabase.from('analytics_events').insert({
+          profile_id: profileData.id,
+          event_type: 'view',
+          device_type: getDeviceType(),
+          browser: getBrowserName(),
+          referrer: document.referrer || null,
+          visitor_id: visitorId,
+        }),
+        supabase
+          .from('link_profiles')
+          .update({ total_views: newViewCount })
+          .eq('id', profileData.id),
+      ]);
 
       // Fetch blocks
       const { data: blocksData } = await supabase
@@ -251,24 +291,45 @@ export default function PublicProfilePage() {
     setVerifyingPassword(false);
   };
 
-  const handleBlockClick = async (block: Block) => {
+  const handleBlockClick = useCallback(async (block: Block) => {
     if (!block.url) return;
 
-    // Track click
-    await supabase.from('analytics_events').insert({
-      profile_id: profile?.id,
-      block_id: block.id,
-      event_type: 'click',
-      device_type: /Mobi/.test(navigator.userAgent) ? 'mobile' : 'desktop',
-    });
+    // Track click and increment total_clicks
+    const visitorId = getVisitorId();
+    
+    // Fire tracking in background, don't wait for it
+    Promise.all([
+      supabase.from('analytics_events').insert({
+        profile_id: profile?.id,
+        block_id: block.id,
+        event_type: 'click',
+        device_type: getDeviceType(),
+        browser: getBrowserName(),
+        referrer: document.referrer || null,
+        visitor_id: visitorId,
+      }),
+      // Get current clicks then increment
+      supabase
+        .from('blocks')
+        .select('total_clicks')
+        .eq('id', block.id)
+        .single()
+        .then(({ data }) => {
+          const currentClicks = data?.total_clicks || 0;
+          return supabase
+            .from('blocks')
+            .update({ total_clicks: currentClicks + 1 })
+            .eq('id', block.id);
+        }),
+    ]).catch(console.error);
 
-    // Open link
+    // Open link immediately
     if (block.open_in_new_tab) {
       window.open(block.url, '_blank', 'noopener,noreferrer');
     } else {
       window.location.href = block.url;
     }
-  };
+  }, [profile?.id]);
 
   const getBackgroundStyle = () => {
     if (!profile) return {};
