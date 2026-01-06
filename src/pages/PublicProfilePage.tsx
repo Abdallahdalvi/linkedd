@@ -315,11 +315,86 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
         currency?: string; 
         original_price?: string; 
         badge?: string;
+        display_style?: string;
       } | undefined;
       const currencySymbols: Record<string, string> = {
         USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
       };
       const symbol = currencySymbols[content?.currency || 'USD'] || '$';
+      const displayStyle = content?.display_style || 'card';
+
+      // Square style
+      if (displayStyle === 'square') {
+        return (
+          <button onClick={onClick} className="w-full rounded-2xl bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg overflow-hidden">
+            <div className="relative aspect-square">
+              {block.thumbnail_url ? (
+                <img 
+                  src={block.thumbnail_url} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                  <span className="text-6xl">🛍️</span>
+                </div>
+              )}
+              {content?.badge && (
+                <span className="absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full bg-primary text-primary-foreground font-bold">
+                  {content.badge}
+                </span>
+              )}
+            </div>
+            <div className="p-4">
+              <h3 className="font-semibold text-foreground text-lg">{block.title || 'Product'}</h3>
+              {block.subtitle && (
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{block.subtitle}</p>
+              )}
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-lg text-primary">
+                    {symbol}{content?.price || '0.00'}
+                  </span>
+                  {content?.original_price && (
+                    <span className="text-sm text-muted-foreground line-through">
+                      {symbol}{content.original_price}
+                    </span>
+                  )}
+                </div>
+                <div className="px-4 py-2 rounded-full gradient-primary text-primary-foreground text-sm font-semibold">
+                  Buy Now
+                </div>
+              </div>
+            </div>
+          </button>
+        );
+      }
+
+      // Minimal style
+      if (displayStyle === 'minimal') {
+        return (
+          <button onClick={onClick} className={`${pillClasses} flex items-center gap-3`}>
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <span className="text-lg">🛍️</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-foreground truncate">{block.title || 'Product'}</h3>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="font-bold text-primary">
+                {symbol}{content?.price || '0.00'}
+              </span>
+              {content?.badge && (
+                <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-medium">
+                  {content.badge}
+                </span>
+              )}
+            </div>
+          </button>
+        );
+      }
+
+      // Default: Card style
       return (
         <button onClick={onClick} className="w-full rounded-2xl bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg overflow-hidden">
           <div className="flex items-center gap-3 p-4">

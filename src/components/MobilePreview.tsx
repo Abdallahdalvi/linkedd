@@ -388,11 +388,119 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
         original_price?: string; 
         badge?: string;
         product_type?: string;
+        display_style?: string;
       } | undefined;
       const currencySymbols: Record<string, string> = {
         USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
       };
       const symbol = currencySymbols[shopContent?.currency || 'USD'] || '$';
+      const displayStyle = shopContent?.display_style || 'card';
+
+      // Square style - large image on top
+      if (displayStyle === 'square') {
+        return (
+          <a 
+            href={block.url || '#'}
+            target={block.open_in_new_tab ? '_blank' : undefined}
+            rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+            className="block w-[110%] -ml-[5%] overflow-hidden transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-lg"
+            style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+          >
+            <div className="relative aspect-square">
+              {block.thumbnail_url ? (
+                <img 
+                  src={block.thumbnail_url} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div 
+                  className="w-full h-full flex items-center justify-center"
+                  style={{ backgroundColor: `${theme.accent}15` }}
+                >
+                  <ShoppingBag className="w-12 h-12" style={{ color: theme.accent }} />
+                </div>
+              )}
+              {shopContent?.badge && (
+                <span 
+                  className="absolute top-2 left-2 text-[9px] px-2 py-0.5 rounded-full font-bold"
+                  style={{ backgroundColor: theme.accent, color: '#fff' }}
+                >
+                  {shopContent.badge}
+                </span>
+              )}
+            </div>
+            <div className="p-3">
+              <h3 className="text-sm font-semibold leading-tight" style={{ color: theme.text }}>
+                {block.title || 'Product'}
+              </h3>
+              {block.subtitle && (
+                <p className="text-xs opacity-60 mt-0.5 line-clamp-2" style={{ color: theme.text }}>{block.subtitle}</p>
+              )}
+              <div className="flex items-center justify-between mt-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-bold" style={{ color: theme.accent }}>
+                    {symbol}{shopContent?.price || '0.00'}
+                  </span>
+                  {shopContent?.original_price && (
+                    <span className="text-xs line-through opacity-50" style={{ color: theme.text }}>
+                      {symbol}{shopContent.original_price}
+                    </span>
+                  )}
+                </div>
+                <div 
+                  className="px-3 py-1 rounded-full text-[10px] font-semibold"
+                  style={{ backgroundColor: theme.accent, color: '#fff' }}
+                >
+                  Buy Now
+                </div>
+              </div>
+            </div>
+          </a>
+        );
+      }
+
+      // Minimal style - simple button-like
+      if (displayStyle === 'minimal') {
+        return (
+          <a 
+            href={block.url || '#'}
+            target={block.open_in_new_tab ? '_blank' : undefined}
+            rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+            className="block w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            style={pillStyle}
+          >
+            <div className="flex items-center gap-2">
+              <div 
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${theme.accent}20` }}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" style={{ color: theme.accent }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xs font-semibold leading-tight truncate" style={{ color: theme.text }}>
+                  {block.title || 'Product'}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs font-bold" style={{ color: theme.accent }}>
+                  {symbol}{shopContent?.price || '0.00'}
+                </span>
+                {shopContent?.badge && (
+                  <span 
+                    className="text-[8px] px-1.5 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: theme.accent, color: '#fff' }}
+                  >
+                    {shopContent.badge}
+                  </span>
+                )}
+              </div>
+            </div>
+          </a>
+        );
+      }
+
+      // Default: Card style (horizontal)
       return (
         <a 
           href={block.url || '#'}
