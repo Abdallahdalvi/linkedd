@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import type { Json } from '@/integrations/supabase/types';
 
 export interface LinkProfile {
   id: string;
@@ -149,7 +150,25 @@ export function useLinkProfile() {
   const addBlock = async (block: Partial<Block>) => {
     if (!profile) return null;
 
-    const insertData = {
+    const insertData: {
+      profile_id: string;
+      type: string;
+      title: string | null;
+      subtitle: string | null;
+      url: string | null;
+      thumbnail_url: string | null;
+      icon: string | null;
+      content: Json;
+      button_style: Json;
+      is_enabled: boolean;
+      is_featured: boolean;
+      open_in_new_tab: boolean;
+      mobile_only: boolean;
+      desktop_only: boolean;
+      schedule_start: string | null;
+      schedule_end: string | null;
+      position: number;
+    } = {
       profile_id: profile.id,
       type: block.type || 'link',
       title: block.title || null,
@@ -157,11 +176,15 @@ export function useLinkProfile() {
       url: block.url || null,
       thumbnail_url: block.thumbnail_url || null,
       icon: block.icon || null,
+      content: (block.content || {}) as Json,
+      button_style: (block.button_style || {}) as Json,
       is_enabled: block.is_enabled ?? true,
       is_featured: block.is_featured ?? false,
       open_in_new_tab: block.open_in_new_tab ?? true,
       mobile_only: block.mobile_only ?? false,
       desktop_only: block.desktop_only ?? false,
+      schedule_start: block.schedule_start || null,
+      schedule_end: block.schedule_end || null,
       position: blocks.length,
     };
 
@@ -185,12 +208,28 @@ export function useLinkProfile() {
   };
 
   const updateBlock = async (blockId: string, updates: Partial<Block>) => {
-    // Remove content and button_style from updates to avoid type issues
-    const { content, button_style, ...safeUpdates } = updates;
+    // Prepare the update data, including content and button_style
+    const updateData: Record<string, unknown> = {};
+    
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.subtitle !== undefined) updateData.subtitle = updates.subtitle;
+    if (updates.url !== undefined) updateData.url = updates.url;
+    if (updates.thumbnail_url !== undefined) updateData.thumbnail_url = updates.thumbnail_url;
+    if (updates.icon !== undefined) updateData.icon = updates.icon;
+    if (updates.is_enabled !== undefined) updateData.is_enabled = updates.is_enabled;
+    if (updates.is_featured !== undefined) updateData.is_featured = updates.is_featured;
+    if (updates.open_in_new_tab !== undefined) updateData.open_in_new_tab = updates.open_in_new_tab;
+    if (updates.mobile_only !== undefined) updateData.mobile_only = updates.mobile_only;
+    if (updates.desktop_only !== undefined) updateData.desktop_only = updates.desktop_only;
+    if (updates.schedule_start !== undefined) updateData.schedule_start = updates.schedule_start;
+    if (updates.schedule_end !== undefined) updateData.schedule_end = updates.schedule_end;
+    if (updates.position !== undefined) updateData.position = updates.position;
+    if (updates.content !== undefined) updateData.content = updates.content;
+    if (updates.button_style !== undefined) updateData.button_style = updates.button_style;
     
     const { data, error } = await supabase
       .from('blocks')
-      .update(safeUpdates)
+      .update(updateData)
       .eq('id', blockId)
       .select()
       .single();

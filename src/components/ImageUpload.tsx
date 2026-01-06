@@ -6,22 +6,28 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 interface ImageUploadProps {
+  currentImage?: string | null;
   currentImageUrl?: string | null;
-  onUploadComplete: (url: string) => void;
-  folder: 'avatars' | 'covers';
-  aspectRatio?: 'square' | 'cover';
+  onUpload?: (url: string) => void;
+  onUploadComplete?: (url: string) => void;
+  folder?: string;
+  aspectRatio?: 'square' | 'cover' | 'video' | 'portrait';
   className?: string;
   placeholder?: React.ReactNode;
 }
 
 export default function ImageUpload({
+  currentImage,
   currentImageUrl,
+  onUpload,
   onUploadComplete,
-  folder,
+  folder = 'uploads',
   aspectRatio = 'square',
   className,
   placeholder,
 }: ImageUploadProps) {
+  const handleComplete = onUpload || onUploadComplete || (() => {});
+  const displayCurrentImage = currentImage || currentImageUrl;
   const { user } = useAuth();
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | null>(null);
@@ -66,7 +72,7 @@ export default function ImageUpload({
         .from('profile-images')
         .getPublicUrl(filePath);
 
-      onUploadComplete(publicUrl);
+      handleComplete(publicUrl);
       toast.success('Image uploaded successfully!');
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -85,20 +91,20 @@ export default function ImageUpload({
   const handleRemove = (e: React.MouseEvent) => {
     e.stopPropagation();
     setPreview(null);
-    onUploadComplete('');
+    handleComplete('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
   };
 
-  const displayImage = preview || currentImageUrl;
+  const displayImage = preview || displayCurrentImage;
 
   return (
     <div
       onClick={handleClick}
       className={cn(
         'relative cursor-pointer overflow-hidden rounded-xl border-2 border-dashed border-border transition-all hover:border-primary',
-        aspectRatio === 'square' ? 'aspect-square' : 'aspect-[3/1]',
+        aspectRatio === 'square' ? 'aspect-square' : aspectRatio === 'video' ? 'aspect-video' : aspectRatio === 'portrait' ? 'aspect-[4/5]' : 'aspect-[3/1]',
         className
       )}
     >

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import {
   Link as LinkIcon,
   Plus,
@@ -7,35 +8,36 @@ import {
   Eye,
   EyeOff,
   MousePointerClick,
-  MoreVertical,
-  Star,
-  Trash2,
-  Edit,
-  Copy,
-  ExternalLink,
-  GripVertical,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import MobilePreview from '@/components/MobilePreview';
 import AddBlockDialog from '@/components/blocks/AddBlockDialog';
-import { useState } from 'react';
+import SortableBlock from '@/components/blocks/SortableBlock';
+import { Block } from '@/hooks/useLinkProfile';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 
 interface DashboardLinksPageProps {
   profile: any;
-  blocks: any[];
-  onAddBlock: (block: any) => Promise<any>;
-  onUpdateBlock: (id: string, updates: any) => Promise<void>;
+  blocks: Block[];
+  onAddBlock: (block: Partial<Block>) => Promise<any>;
+  onUpdateBlock: (id: string, updates: Partial<Block>) => Promise<void>;
   onDeleteBlock: (id: string) => Promise<void>;
+  onReorderBlocks?: (blocks: Block[]) => Promise<void>;
 }
 
 export default function DashboardLinksPage({
@@ -44,9 +46,21 @@ export default function DashboardLinksPage({
   onAddBlock,
   onUpdateBlock,
   onDeleteBlock,
+  onReorderBlocks,
 }: DashboardLinksPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const filteredBlocks = blocks.filter(block =>
     (block.title?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
@@ -56,12 +70,16 @@ export default function DashboardLinksPage({
   const enabledCount = blocks.filter(b => b.is_enabled).length;
   const totalClicks = blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0);
 
-  const handleToggleBlock = (id: string, currentState: boolean) => {
-    onUpdateBlock(id, { is_enabled: !currentState });
-  };
-
-  const handleToggleFeatured = (id: string, currentState: boolean) => {
-    onUpdateBlock(id, { is_featured: !currentState });
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const oldIndex = blocks.findIndex((b) => b.id === active.id);
+      const newIndex = blocks.findIndex((b) => b.id === over.id);
+      
+      const newBlocks = arrayMove(blocks, oldIndex, newIndex);
+      onReorderBlocks?.(newBlocks);
+    }
   };
 
   return (
@@ -138,116 +156,54 @@ export default function DashboardLinksPage({
           </div>
 
           {/* Blocks List */}
-          <div className="space-y-3">
-            {filteredBlocks.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="glass-card p-12 text-center"
+          {filteredBlocks.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="glass-card p-12 text-center"
+            >
+              <LinkIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No blocks yet</h3>
+              <p className="text-muted-foreground mb-4">
+                Start adding links and content to your profile
+              </p>
+              <Button 
+                className="gradient-primary text-primary-foreground"
+                onClick={() => setAddDialogOpen(true)}
               >
-                <LinkIcon className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No blocks yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Start adding links and content to your profile
-                </p>
-                <Button 
-                  className="gradient-primary text-primary-foreground"
-                  onClick={() => setAddDialogOpen(true)}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Your First Block
-                </Button>
-              </motion.div>
-            ) : (
-              filteredBlocks.map((block, i) => (
-                <motion.div
-                  key={block.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
-                  className={`glass-card p-4 ${!block.is_enabled ? 'opacity-60' : ''}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="cursor-grab text-muted-foreground">
-                      <GripVertical className="w-5 h-5" />
-                    </div>
-
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <LinkIcon className="w-6 h-6 text-primary" />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-foreground truncate">
-                          {block.title || 'Untitled Block'}
-                        </h3>
-                        {block.is_featured && (
-                          <Star className="w-4 h-4 text-warning fill-warning" />
-                        )}
-                        <Badge variant="secondary" className="text-xs">
-                          {block.type}
-                        </Badge>
-                      </div>
-                      {block.url && (
-                        <p className="text-sm text-muted-foreground truncate">{block.url}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-1">
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <MousePointerClick className="w-3 h-3" />
-                          {block.total_clicks || 0} clicks
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <Switch
-                        checked={block.is_enabled}
-                        onCheckedChange={() => handleToggleBlock(block.id, block.is_enabled)}
+                <Plus className="w-4 h-4 mr-2" />
+                Add Your First Block
+              </Button>
+            </motion.div>
+          ) : (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={filteredBlocks.map(b => b.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {filteredBlocks.map((block, i) => (
+                    <motion.div
+                      key={block.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                    >
+                      <SortableBlock
+                        block={block}
+                        onUpdate={(updates) => onUpdateBlock(block.id, updates)}
+                        onDelete={() => onDeleteBlock(block.id)}
                       />
-                      
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>
-                            <Edit className="w-4 h-4 mr-2" />
-                            Edit Block
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Copy className="w-4 h-4 mr-2" />
-                            Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleToggleFeatured(block.id, block.is_featured)}>
-                            <Star className="w-4 h-4 mr-2" />
-                            {block.is_featured ? 'Unfeature' : 'Feature'}
-                          </DropdownMenuItem>
-                          {block.url && (
-                            <DropdownMenuItem asChild>
-                              <a href={block.url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="w-4 h-4 mr-2" />
-                                Open Link
-                              </a>
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onClick={() => onDeleteBlock(block.id)}
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                </motion.div>
-              ))
-            )}
-          </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
         </div>
 
         {/* Right: Mobile Preview */}
