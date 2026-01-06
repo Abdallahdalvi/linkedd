@@ -15,7 +15,10 @@ import {
   Music,
   ChevronLeft,
   ChevronRight,
-  Clock
+  Clock,
+  Facebook,
+  Music2,
+  Ghost,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRef } from 'react';
@@ -33,9 +36,30 @@ const socialIcons: Record<string, typeof Instagram> = {
   linkedin: Linkedin,
   twitter: Twitter,
   x: Twitter,
+  tiktok: Music2,
+  facebook: Facebook,
+  snapchat: Ghost,
+  pinterest: MapPin,
   whatsapp: MessageCircle,
   email: Mail,
+  phone: Phone,
   website: Globe,
+};
+
+const socialColors: Record<string, string> = {
+  instagram: '#E4405F',
+  youtube: '#FF0000',
+  linkedin: '#0A66C2',
+  twitter: '#1DA1F2',
+  x: '#000000',
+  tiktok: '#000000',
+  facebook: '#1877F2',
+  snapchat: '#FFFC00',
+  pinterest: '#E60023',
+  whatsapp: '#25D366',
+  email: '#EA4335',
+  phone: '#25D366',
+  website: '#6366F1',
 };
 
 // Default theme for fallback
@@ -164,18 +188,18 @@ export default function MobilePreview({
 
               {/* Social Icons Row */}
               {profile.social_links && Object.keys(profile.social_links).length > 0 && (
-                <div className="flex items-center gap-2 mt-4">
+                <div className="flex items-center justify-center flex-wrap gap-2 mt-4">
                   {Object.entries(profile.social_links).map(([platform, url]) => {
                     const Icon = socialIcons[platform.toLowerCase()] || Globe;
+                    const brandColor = socialColors[platform.toLowerCase()] || theme.accent;
                     return url ? (
                       <a
                         key={platform}
                         href={url as string}
-                        className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110"
+                        className="w-9 h-9 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-sm"
                         style={{ 
-                          backgroundColor: theme.gradient ? 'rgba(255,255,255,0.15)' : `${theme.text}10`,
-                          backdropFilter: 'blur(8px)',
-                          color: theme.text 
+                          backgroundColor: brandColor,
+                          color: platform.toLowerCase() === 'snapchat' ? '#000000' : '#ffffff',
                         }}
                       >
                         <Icon className="w-4 h-4" />
