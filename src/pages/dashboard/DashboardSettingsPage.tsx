@@ -212,7 +212,7 @@ export default function DashboardSettingsPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `linkbio-export-${profile?.username || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `linksdc-export-${profile?.username || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
