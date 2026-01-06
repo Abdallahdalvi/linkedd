@@ -14,6 +14,13 @@ import {
   CheckCircle2,
   Lock,
   ShieldCheck,
+  Play,
+  Music,
+  Phone,
+  Facebook,
+  Music2,
+  Ghost,
+  ShoppingBag,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,6 +40,7 @@ interface Profile {
   background_type: string;
   background_value: string;
   social_links: Record<string, string>;
+  custom_colors: Record<string, string | boolean | number> | null;
   is_public: boolean;
   is_password_protected: boolean;
 }
@@ -44,6 +52,7 @@ interface Block {
   subtitle: string | null;
   url: string | null;
   thumbnail_url: string | null;
+  content: Record<string, any> | null;
   is_enabled: boolean;
   is_featured: boolean;
   open_in_new_tab: boolean;
@@ -56,9 +65,65 @@ const socialIcons: Record<string, typeof Instagram> = {
   linkedin: Linkedin,
   twitter: Twitter,
   x: Twitter,
+  tiktok: Music2,
+  facebook: Facebook,
+  snapchat: Ghost,
+  pinterest: MapPin,
   whatsapp: MessageCircle,
   email: Mail,
+  phone: Phone,
   website: Globe,
+};
+
+const socialColors: Record<string, string> = {
+  instagram: '#E4405F',
+  youtube: '#FF0000',
+  linkedin: '#0A66C2',
+  twitter: '#1DA1F2',
+  x: '#000000',
+  tiktok: '#000000',
+  facebook: '#1877F2',
+  snapchat: '#FFFC00',
+  pinterest: '#E60023',
+  whatsapp: '#25D366',
+  email: '#EA4335',
+  phone: '#25D366',
+  website: '#6366F1',
+};
+
+// Default theme
+const defaultTheme = { 
+  bg: '#ffffff', 
+  text: '#1a1a1a', 
+  accent: '#1a1a1a', 
+  cardBg: 'rgba(255,255,255,0.95)', 
+  gradient: false,
+  buttonRadius: 16,
+  buttonStyle: 'filled',
+};
+
+interface ThemeColors {
+  bg: string;
+  text: string;
+  accent: string;
+  cardBg: string;
+  gradient: boolean;
+  buttonRadius: number;
+  buttonStyle: string;
+}
+
+const getThemeColors = (profile: Profile | null): ThemeColors => {
+  if (!profile?.custom_colors) return defaultTheme;
+  const colors = profile.custom_colors;
+  return {
+    bg: (colors.bg as string) || defaultTheme.bg,
+    text: (colors.text as string) || defaultTheme.text,
+    accent: (colors.accent as string) || defaultTheme.accent,
+    cardBg: (colors.cardBg as string) || defaultTheme.cardBg,
+    gradient: Boolean(colors.gradient),
+    buttonRadius: (colors.buttonRadius as number) || defaultTheme.buttonRadius,
+    buttonStyle: (colors.buttonStyle as string) || defaultTheme.buttonStyle,
+  };
 };
 
 export default function PublicProfilePage() {
@@ -82,7 +147,7 @@ export default function PublicProfilePage() {
       // First check if profile exists and if it's password protected
       const { data: profileData, error: profileError } = await supabase
         .from('link_profiles')
-        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, is_public, is_password_protected')
+        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, custom_colors, is_public, is_password_protected')
         .eq('username', username)
         .eq('is_public', true)
         .maybeSingle();
@@ -93,6 +158,12 @@ export default function PublicProfilePage() {
         return;
       }
 
+      const parsedProfile: Profile = {
+        ...profileData,
+        social_links: (profileData.social_links as Record<string, string>) || {},
+        custom_colors: (profileData.custom_colors as Record<string, string | boolean | number>) || null,
+      };
+
       // Check if password protected
       if (profileData.is_password_protected) {
         setIsPasswordProtected(true);
@@ -101,19 +172,13 @@ export default function PublicProfilePage() {
         if (accessToken) {
           setIsUnlocked(true);
         } else {
-          setProfile({
-            ...profileData,
-            social_links: (profileData.social_links as Record<string, string>) || {},
-          });
+          setProfile(parsedProfile);
           setLoading(false);
           return;
         }
       }
 
-      setProfile({
-        ...profileData,
-        social_links: (profileData.social_links as Record<string, string>) || {},
-      });
+      setProfile(parsedProfile);
 
       // Track view
       await supabase.from('analytics_events').insert({
@@ -132,7 +197,19 @@ export default function PublicProfilePage() {
         .order('position', { ascending: true });
 
       if (blocksData) {
-        setBlocks(blocksData);
+        setBlocks(blocksData.map(b => ({
+          id: b.id,
+          type: b.type,
+          title: b.title,
+          subtitle: b.subtitle,
+          url: b.url,
+          thumbnail_url: b.thumbnail_url,
+          content: (b.content as Record<string, any>) || null,
+          is_enabled: b.is_enabled ?? true,
+          is_featured: b.is_featured ?? false,
+          open_in_new_tab: b.open_in_new_tab ?? true,
+          position: b.position ?? 0,
+        })));
       }
 
       setLoading(false);
@@ -330,6 +407,8 @@ export default function PublicProfilePage() {
     );
   }
 
+  const theme = getThemeColors(profile);
+
   return (
     <div 
       className="min-h-screen"
@@ -344,10 +423,25 @@ export default function PublicProfilePage() {
           >
             {/* Avatar with Glow */}
             <div className="relative">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-accent blur-xl opacity-40 scale-110" />
-              <Avatar className="w-28 h-28 border-4 border-white/50 shadow-2xl relative z-10">
+              <div 
+                className="absolute inset-0 rounded-full blur-xl opacity-50 scale-110"
+                style={{ background: theme.accent }}
+              />
+              <Avatar 
+                className="w-28 h-28 border-4 shadow-2xl relative z-10"
+                style={{ 
+                  borderColor: theme.gradient ? 'rgba(255,255,255,0.5)' : theme.accent,
+                  boxShadow: `0 8px 32px -8px ${theme.accent}40`
+                }}
+              >
                 <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
-                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-3xl font-bold">
+                <AvatarFallback 
+                  style={{ 
+                    background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}cc)`, 
+                    color: '#ffffff' 
+                  }} 
+                  className="text-3xl font-bold"
+                >
                   {profile?.display_name?.charAt(0) || profile?.username.charAt(0)}
                 </AvatarFallback>
               </Avatar>
@@ -356,42 +450,62 @@ export default function PublicProfilePage() {
             {/* Name with Verified Badge */}
             <div className="mt-5 text-center">
               <div className="flex items-center justify-center gap-2">
-                <h1 className="text-2xl font-display font-bold text-foreground">
+                <h1 
+                  className="text-2xl font-display font-bold"
+                  style={{ color: theme.text }}
+                >
                   {profile?.display_name || `@${profile?.username}`}
                 </h1>
-                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-white" />
+                <div 
+                  className="w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{ 
+                    background: theme.gradient ? 'rgba(255,255,255,0.2)' : theme.accent,
+                    color: theme.gradient ? theme.text : '#ffffff'
+                  }}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
                 </div>
               </div>
               
               {profile?.bio && (
-                <p className="text-muted-foreground mt-3 max-w-sm leading-relaxed">
+                <p 
+                  className="mt-3 max-w-sm leading-relaxed opacity-80"
+                  style={{ color: theme.text }}
+                >
                   {profile.bio}
                 </p>
               )}
 
               {profile?.location && (
-                <div className="flex items-center justify-center gap-1.5 mt-3 text-sm text-muted-foreground/70">
+                <div 
+                  className="flex items-center justify-center gap-1.5 mt-3 text-sm opacity-60"
+                  style={{ color: theme.text }}
+                >
                   <MapPin className="w-4 h-4" />
                   <span>{profile.location}</span>
                 </div>
               )}
             </div>
 
-            {/* Social Icons Row */}
+            {/* Social Icons Row with Brand Colors */}
             {profile?.social_links && Object.keys(profile.social_links).length > 0 && (
-              <div className="flex items-center gap-3 mt-5">
+              <div className="flex items-center justify-center flex-wrap gap-3 mt-5">
                 {Object.entries(profile.social_links).map(([platform, url]) => {
                   const Icon = socialIcons[platform.toLowerCase()] || Globe;
+                  const brandColor = socialColors[platform.toLowerCase()] || theme.accent;
                   return url ? (
                     <a
                       key={platform}
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-11 h-11 rounded-full bg-foreground/10 backdrop-blur-xl flex items-center justify-center hover:bg-foreground/20 hover:scale-110 transition-all duration-200"
+                      className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-110 shadow-sm"
+                      style={{ 
+                        backgroundColor: brandColor,
+                        color: platform.toLowerCase() === 'snapchat' ? '#000000' : '#ffffff',
+                      }}
                     >
-                      <Icon className="w-5 h-5 text-foreground" />
+                      <Icon className="w-5 h-5" />
                     </a>
                   ) : null;
                 })}
@@ -407,7 +521,7 @@ export default function PublicProfilePage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <BlockRenderer block={block} onClick={() => handleBlockClick(block)} />
+                  <BlockRenderer block={block} theme={theme} onClick={() => handleBlockClick(block)} />
                 </motion.div>
               ))}
             </div>
@@ -419,51 +533,251 @@ export default function PublicProfilePage() {
   );
 }
 
-function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }) {
-  const pillClasses = "w-full py-4 px-5 rounded-full bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg";
+function BlockRenderer({ block, theme, onClick }: { block: Block; theme: ThemeColors; onClick: () => void }) {
+  const buttonRadius = theme.buttonRadius || 16;
+  const buttonStyle = theme.buttonStyle || 'filled';
+
+  // Get button style based on selected style
+  const getButtonStyle = () => {
+    const baseStyle = {
+      color: theme.text,
+      borderRadius: `${buttonRadius}px`,
+    };
+
+    switch (buttonStyle) {
+      case 'outline':
+        return {
+          ...baseStyle,
+          backgroundColor: 'transparent',
+          border: `2px solid ${theme.text}`,
+          boxShadow: 'none',
+        };
+      case 'soft-shadow':
+        return {
+          ...baseStyle,
+          backgroundColor: theme.cardBg,
+          border: 'none',
+          boxShadow: '0 8px 30px -6px rgba(0,0,0,0.15), 0 4px 10px -4px rgba(0,0,0,0.1)',
+        };
+      case 'glass':
+        return {
+          ...baseStyle,
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.25)',
+          boxShadow: '0 4px 20px -4px rgba(0,0,0,0.1)',
+        };
+      case 'filled':
+      default:
+        return {
+          ...baseStyle,
+          backgroundColor: theme.cardBg,
+          backdropFilter: 'blur(12px)',
+          boxShadow: theme.gradient 
+            ? '0 4px 20px -4px rgba(0,0,0,0.15)' 
+            : '0 2px 8px -2px rgba(0,0,0,0.08)',
+        };
+    }
+  };
+
+  const pillStyle = getButtonStyle();
+
+  const currencySymbols: Record<string, string> = {
+    USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
+  };
 
   switch (block.type) {
     case 'link':
     case 'cta':
       return (
-        <button onClick={onClick} className={`${pillClasses} flex items-center gap-4`}>
-          {block.thumbnail_url && (
-            <img 
-              src={block.thumbnail_url} 
-              alt="" 
-              className="w-11 h-11 rounded-full object-cover flex-shrink-0"
-            />
-          )}
-          <div className="flex-1 min-w-0 text-center">
-            <h3 className="font-semibold text-foreground truncate">
-              {block.title || 'Untitled Link'}
-            </h3>
-            {block.subtitle && (
-              <p className="text-sm text-muted-foreground truncate">{block.subtitle}</p>
+        <button 
+          onClick={onClick}
+          className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          style={pillStyle}
+        >
+          <div className="flex items-center gap-3">
+            {block.thumbnail_url ? (
+              <img 
+                src={block.thumbnail_url} 
+                alt="" 
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              />
+            ) : null}
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="font-semibold leading-tight line-clamp-2" style={{ color: theme.text }}>
+                {block.title || 'Untitled Link'}
+              </h3>
+              {block.subtitle && (
+                <p className="text-sm truncate opacity-60" style={{ color: theme.text }}>{block.subtitle}</p>
+              )}
+            </div>
+            {block.thumbnail_url && <div className="w-10 flex-shrink-0" />}
+          </div>
+        </button>
+      );
+
+    case 'video':
+      return (
+        <button 
+          onClick={onClick}
+          className="block w-full overflow-hidden cursor-pointer shadow-lg hover:scale-[1.02] transition-transform"
+          style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+        >
+          <div className="relative aspect-video bg-black/10">
+            {block.thumbnail_url ? (
+              <>
+                <img 
+                  src={block.thumbnail_url} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div 
+                    className="w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+                  >
+                    <Play className="w-6 h-6 text-white/90 ml-0.5" fill="rgba(255,255,255,0.9)" />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div 
+                  className="w-14 h-14 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+                >
+                  <Play className="w-6 h-6 text-white/70 ml-0.5" />
+                </div>
+              </div>
             )}
           </div>
-          {block.thumbnail_url && <div className="w-11 flex-shrink-0" />}
+          <div className="p-4" style={{ color: theme.text }}>
+            <h3 className="font-semibold uppercase tracking-wide truncate">{block.title || 'Video'}</h3>
+            {block.subtitle && (
+              <p className="text-sm opacity-60 truncate">{block.subtitle}</p>
+            )}
+          </div>
+        </button>
+      );
+
+    case 'music':
+      return (
+        <button 
+          onClick={onClick}
+          className="block w-full py-4 px-5 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          style={pillStyle}
+        >
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${theme.accent}20` }}
+            >
+              <Music className="w-5 h-5" style={{ color: theme.accent }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold leading-tight truncate" style={{ color: theme.text }}>
+                {block.title || 'Music'}
+              </h3>
+              {block.subtitle && (
+                <p className="text-sm truncate opacity-60" style={{ color: theme.text }}>{block.subtitle}</p>
+              )}
+            </div>
+          </div>
+        </button>
+      );
+
+    case 'contact_whatsapp':
+      return (
+        <button 
+          onClick={onClick}
+          className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          style={pillStyle}
+        >
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: '#25D366' }}
+            >
+              <MessageCircle className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="font-semibold leading-tight" style={{ color: theme.text }}>
+                {block.title || 'Message on WhatsApp'}
+              </h3>
+            </div>
+            <div className="w-10 flex-shrink-0" />
+          </div>
+        </button>
+      );
+
+    case 'contact_email':
+      return (
+        <button 
+          onClick={onClick}
+          className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          style={pillStyle}
+        >
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${theme.accent}20` }}
+            >
+              <Mail className="w-5 h-5" style={{ color: theme.accent }} />
+            </div>
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="font-semibold leading-tight" style={{ color: theme.text }}>
+                {block.title || 'Send Email'}
+              </h3>
+            </div>
+            <div className="w-10 flex-shrink-0" />
+          </div>
+        </button>
+      );
+
+    case 'contact_call':
+      return (
+        <button 
+          onClick={onClick}
+          className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          style={pillStyle}
+        >
+          <div className="flex items-center gap-3">
+            <div 
+              className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${theme.accent}20` }}
+            >
+              <Phone className="w-5 h-5" style={{ color: theme.accent }} />
+            </div>
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="font-semibold leading-tight" style={{ color: theme.text }}>
+                {block.title || 'Call'}
+              </h3>
+            </div>
+            <div className="w-10 flex-shrink-0" />
+          </div>
         </button>
       );
 
     case 'shop':
-      const content = (block as any).content as { 
+      const shopContent = block.content as { 
         price?: string; 
         currency?: string; 
         original_price?: string; 
         badge?: string;
         display_style?: string;
       } | undefined;
-      const currencySymbols: Record<string, string> = {
-        USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
-      };
-      const symbol = currencySymbols[content?.currency || 'USD'] || '$';
-      const displayStyle = content?.display_style || 'card';
+      const symbol = currencySymbols[shopContent?.currency || 'USD'] || '$';
+      const displayStyle = shopContent?.display_style || 'card';
 
       // Square style
       if (displayStyle === 'square') {
         return (
-          <button onClick={onClick} className="w-full rounded-2xl bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg overflow-hidden">
+          <button 
+            onClick={onClick} 
+            className="w-full overflow-hidden transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+            style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+          >
             <div className="relative aspect-square">
               {block.thumbnail_url ? (
                 <img 
@@ -472,33 +786,44 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-6xl">🛍️</span>
+                <div 
+                  className="w-full h-full flex items-center justify-center"
+                  style={{ backgroundColor: `${theme.accent}15` }}
+                >
+                  <ShoppingBag className="w-16 h-16" style={{ color: theme.accent }} />
                 </div>
               )}
-              {content?.badge && (
-                <span className="absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full bg-primary text-primary-foreground font-bold">
-                  {content.badge}
+              {shopContent?.badge && (
+                <span 
+                  className="absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full font-bold"
+                  style={{ backgroundColor: theme.accent, color: '#fff' }}
+                >
+                  {shopContent.badge}
                 </span>
               )}
             </div>
             <div className="p-4">
-              <h3 className="font-semibold text-foreground text-lg">{block.title || 'Product'}</h3>
+              <h3 className="font-semibold text-lg leading-tight" style={{ color: theme.text }}>
+                {block.title || 'Product'}
+              </h3>
               {block.subtitle && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{block.subtitle}</p>
+                <p className="text-sm opacity-60 mt-1 line-clamp-2" style={{ color: theme.text }}>{block.subtitle}</p>
               )}
               <div className="flex items-center justify-between mt-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-lg text-primary">
-                    {symbol}{content?.price || '0.00'}
+                  <span className="text-lg font-bold" style={{ color: theme.accent }}>
+                    {symbol}{shopContent?.price || '0.00'}
                   </span>
-                  {content?.original_price && (
-                    <span className="text-sm text-muted-foreground line-through">
-                      {symbol}{content.original_price}
+                  {shopContent?.original_price && (
+                    <span className="text-sm line-through opacity-50" style={{ color: theme.text }}>
+                      {symbol}{shopContent.original_price}
                     </span>
                   )}
                 </div>
-                <div className="px-4 py-2 rounded-full gradient-primary text-primary-foreground text-sm font-semibold">
+                <div 
+                  className="px-4 py-2 rounded-full text-sm font-semibold"
+                  style={{ backgroundColor: theme.accent, color: '#fff' }}
+                >
                   Buy Now
                 </div>
               </div>
@@ -510,22 +835,36 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
       // Minimal style
       if (displayStyle === 'minimal') {
         return (
-          <button onClick={onClick} className={`${pillClasses} flex items-center gap-3`}>
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-lg">🛍️</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-foreground truncate">{block.title || 'Product'}</h3>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <span className="font-bold text-primary">
-                {symbol}{content?.price || '0.00'}
-              </span>
-              {content?.badge && (
-                <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-medium">
-                  {content.badge}
+          <button 
+            onClick={onClick} 
+            className="w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            style={pillStyle}
+          >
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${theme.accent}20` }}
+              >
+                <ShoppingBag className="w-5 h-5" style={{ color: theme.accent }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold leading-tight truncate" style={{ color: theme.text }}>
+                  {block.title || 'Product'}
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="font-bold" style={{ color: theme.accent }}>
+                  {symbol}{shopContent?.price || '0.00'}
                 </span>
-              )}
+                {shopContent?.badge && (
+                  <span 
+                    className="text-xs px-2 py-0.5 rounded-full font-medium"
+                    style={{ backgroundColor: theme.accent, color: '#fff' }}
+                  >
+                    {shopContent.badge}
+                  </span>
+                )}
+              </div>
             </div>
           </button>
         );
@@ -533,70 +872,143 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
 
       // Default: Card style
       return (
-        <button onClick={onClick} className="w-full rounded-2xl bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg overflow-hidden">
+        <button 
+          onClick={onClick} 
+          className="w-full overflow-hidden transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+          style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+        >
           <div className="flex items-center gap-3 p-4">
             {block.thumbnail_url ? (
               <img 
                 src={block.thumbnail_url} 
                 alt="" 
-                className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+                className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl">🛍️</span>
+              <div 
+                className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${theme.accent}15` }}
+              >
+                <ShoppingBag className="w-7 h-7" style={{ color: theme.accent }} />
               </div>
             )}
             <div className="flex-1 min-w-0 text-left">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-foreground truncate">{block.title || 'Product'}</h3>
-                {content?.badge && (
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-medium">
-                    {content.badge}
+                <h3 className="font-semibold truncate" style={{ color: theme.text }}>{block.title || 'Product'}</h3>
+                {shopContent?.badge && (
+                  <span 
+                    className="text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0"
+                    style={{ backgroundColor: theme.accent, color: '#fff' }}
+                  >
+                    {shopContent.badge}
                   </span>
                 )}
               </div>
               {block.subtitle && (
-                <p className="text-sm text-muted-foreground truncate">{block.subtitle}</p>
+                <p className="text-sm truncate opacity-60" style={{ color: theme.text }}>{block.subtitle}</p>
               )}
               <div className="flex items-center gap-2 mt-1">
-                <span className="font-bold text-primary">
-                  {symbol}{content?.price || '0.00'}
+                <span className="font-bold" style={{ color: theme.accent }}>
+                  {symbol}{shopContent?.price || '0.00'}
                 </span>
-                {content?.original_price && (
-                  <span className="text-sm text-muted-foreground line-through">
-                    {symbol}{content.original_price}
+                {shopContent?.original_price && (
+                  <span className="text-sm line-through opacity-50" style={{ color: theme.text }}>
+                    {symbol}{shopContent.original_price}
                   </span>
                 )}
               </div>
             </div>
-            <div className="px-4 py-2 rounded-full gradient-primary text-primary-foreground text-sm font-semibold flex-shrink-0">
-              Buy Now
+            <div 
+              className="px-4 py-2 rounded-full text-sm font-semibold flex-shrink-0"
+              style={{ backgroundColor: theme.accent, color: '#fff' }}
+            >
+              Buy
             </div>
           </div>
         </button>
       );
 
     case 'text':
+      const textContent = block.content as { text_size?: string; text_align?: string } | undefined;
+      const textAlign = (textContent?.text_align || 'center') as 'left' | 'center' | 'right';
+      const textSize = textContent?.text_size || 'normal';
       return (
-        <div className="w-full py-4 px-5 rounded-2xl bg-card/90 backdrop-blur-xl">
-          <p className="text-foreground text-center">{block.title}</p>
+        <div 
+          className="w-full py-4 px-5"
+          style={{ ...pillStyle, textAlign }}
+        >
+          {block.title && (
+            <h3 className={`font-semibold ${
+              textSize === 'small' ? 'text-sm' : textSize === 'large' ? 'text-lg' : 'text-base'
+            }`} style={{ color: theme.text }}>
+              {block.title}
+            </h3>
+          )}
+          {block.subtitle && (
+            <p className={`opacity-70 ${
+              textSize === 'small' ? 'text-xs' : textSize === 'large' ? 'text-base' : 'text-sm'
+            }`} style={{ color: theme.text }}>
+              {block.subtitle}
+            </p>
+          )}
         </div>
+      );
+
+    case 'image':
+      return (
+        <button 
+          onClick={block.url ? onClick : undefined}
+          className={`block w-full overflow-hidden shadow-lg ${block.url ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
+          style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+        >
+          {block.thumbnail_url && (
+            <img 
+              src={block.thumbnail_url} 
+              alt={block.title || ''} 
+              className="w-full object-cover"
+            />
+          )}
+          {(block.title || block.subtitle) && (
+            <div className="p-4" style={{ color: theme.text }}>
+              {block.title && <p className="font-semibold">{block.title}</p>}
+              {block.subtitle && <p className="text-sm opacity-60">{block.subtitle}</p>}
+            </div>
+          )}
+        </button>
       );
 
     case 'divider':
       return (
         <div className="py-4">
-          <div className="h-px bg-border/30 mx-8" />
+          <div 
+            className="h-px mx-8" 
+            style={{ backgroundColor: `${theme.text}15` }} 
+          />
         </div>
       );
 
     case 'featured':
       return (
-        <button onClick={onClick} className="w-full rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-xl">
-          <div className="gradient-primary p-6">
-            <h3 className="font-bold text-lg text-primary-foreground">{block.title || 'Featured'}</h3>
+        <button 
+          onClick={onClick} 
+          className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
+          style={{ 
+            background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}dd)`, 
+            color: '#ffffff',
+            borderRadius: `${buttonRadius}px`,
+          }}
+        >
+          {block.thumbnail_url && (
+            <img 
+              src={block.thumbnail_url} 
+              alt="" 
+              className="w-full h-32 object-cover"
+            />
+          )}
+          <div className="p-5">
+            <h3 className="font-bold text-lg">{block.title || 'Featured'}</h3>
             {block.subtitle && (
-              <p className="text-primary-foreground/90 mt-1">{block.subtitle}</p>
+              <p className="opacity-90 mt-1">{block.subtitle}</p>
             )}
           </div>
         </button>
@@ -604,8 +1016,12 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
 
     default:
       return (
-        <button onClick={onClick} className={pillClasses}>
-          <h3 className="font-semibold text-foreground text-center w-full">
+        <button 
+          onClick={onClick} 
+          className="w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+          style={pillStyle}
+        >
+          <h3 className="font-semibold text-center w-full" style={{ color: theme.text }}>
             {block.title || 'Block'}
           </h3>
         </button>
