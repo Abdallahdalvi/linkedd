@@ -12,10 +12,15 @@ import {
   Globe,
   ExternalLink,
   CheckCircle2,
+  Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 
 interface Profile {
   id: string;
@@ -29,6 +34,7 @@ interface Profile {
   background_value: string;
   social_links: Record<string, string>;
   is_public: boolean;
+  is_password_protected: boolean;
 }
 
 interface Block {
@@ -61,14 +67,22 @@ export default function PublicProfilePage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  
+  // Password protection state
+  const [isPasswordProtected, setIsPasswordProtected] = useState(false);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [verifyingPassword, setVerifyingPassword] = useState(false);
 
   useEffect(() => {
     if (!username) return;
 
     const fetchProfile = async () => {
+      // First check if profile exists and if it's password protected
       const { data: profileData, error: profileError } = await supabase
         .from('link_profiles')
-        .select('*')
+        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, is_public, is_password_protected')
         .eq('username', username)
         .eq('is_public', true)
         .maybeSingle();
@@ -77,6 +91,23 @@ export default function PublicProfilePage() {
         setNotFound(true);
         setLoading(false);
         return;
+      }
+
+      // Check if password protected
+      if (profileData.is_password_protected) {
+        setIsPasswordProtected(true);
+        // Check session storage for access token
+        const accessToken = sessionStorage.getItem(`profile_access_${username}`);
+        if (accessToken) {
+          setIsUnlocked(true);
+        } else {
+          setProfile({
+            ...profileData,
+            social_links: (profileData.social_links as Record<string, string>) || {},
+          });
+          setLoading(false);
+          return;
+        }
       }
 
       setProfile({
@@ -108,7 +139,39 @@ export default function PublicProfilePage() {
     };
 
     fetchProfile();
-  }, [username]);
+  }, [username, isUnlocked]);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username || !passwordInput) return;
+
+    setVerifyingPassword(true);
+    setPasswordError('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-profile-password', {
+        body: { username, password: passwordInput },
+      });
+
+      if (error) throw error;
+
+      if (data?.valid) {
+        // Store access token in session storage
+        if (data.accessToken) {
+          sessionStorage.setItem(`profile_access_${username}`, data.accessToken);
+        }
+        setIsUnlocked(true);
+        setPasswordInput('');
+      } else {
+        setPasswordError(data?.error || 'Invalid password');
+      }
+    } catch (error: any) {
+      console.error('Password verification error:', error);
+      setPasswordError('Failed to verify password. Please try again.');
+    }
+
+    setVerifyingPassword(false);
+  };
 
   const handleBlockClick = async (block: Block) => {
     if (!block.url) return;
@@ -180,6 +243,89 @@ export default function PublicProfilePage() {
             <ExternalLink className="w-4 h-4" />
           </a>
         </div>
+      </div>
+    );
+  }
+
+  // Show password protection screen
+  if (isPasswordProtected && !isUnlocked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm mx-4"
+        >
+          <div className="bg-card border border-border rounded-2xl shadow-xl p-8">
+            <div className="flex flex-col items-center mb-6">
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                <Lock className="w-8 h-8 text-primary" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">Protected Profile</h1>
+              <p className="text-sm text-muted-foreground mt-1 text-center">
+                This profile is password protected
+              </p>
+            </div>
+
+            {profile && (
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg mb-6">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={profile.avatar_url || ''} />
+                  <AvatarFallback className="bg-primary text-primary-foreground">
+                    {profile.display_name?.charAt(0) || profile.username.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-sm">{profile.display_name || `@${profile.username}`}</p>
+                  <p className="text-xs text-muted-foreground">@{profile.username}</p>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <div>
+                <Label htmlFor="password" className="text-sm">Enter Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPasswordError('');
+                  }}
+                  placeholder="••••••••"
+                  className="mt-1.5"
+                  autoFocus
+                />
+                {passwordError && (
+                  <p className="text-sm text-destructive mt-1.5">{passwordError}</p>
+                )}
+              </div>
+
+              <Button 
+                type="submit" 
+                className="w-full"
+                disabled={verifyingPassword || !passwordInput}
+              >
+                {verifyingPassword ? (
+                  <span className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Verifying...
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4" />
+                    Unlock Profile
+                  </span>
+                )}
+              </Button>
+            </form>
+
+            <p className="text-xs text-muted-foreground text-center mt-6">
+              Contact the profile owner if you need access
+            </p>
+          </div>
+        </motion.div>
       </div>
     );
   }

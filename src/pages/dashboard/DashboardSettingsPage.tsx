@@ -77,9 +77,9 @@ export default function DashboardSettingsPage({
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
-  // Password protection disabled - feature coming soon with proper encryption
-  const [isPasswordProtected] = useState(false);
-  const [password] = useState('');
+  const [isPasswordProtected, setIsPasswordProtected] = useState(profile?.is_password_protected ?? false);
+  const [profilePassword, setProfilePassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
   
   const [seoTitle, setSeoTitle] = useState(profile?.seo_title || '');
   const [seoDescription, setSeoDescription] = useState(profile?.seo_description || '');
@@ -109,15 +109,34 @@ export default function DashboardSettingsPage({
     try {
       await onUpdateProfile({
         is_public: isPublic,
-        // Password protection disabled - would need server-side hashing
-        is_password_protected: false,
-        password_hash: null,
       });
       toast.success('Privacy settings saved!');
     } catch (error) {
       toast.error('Failed to save settings');
     }
     setSaving(false);
+  };
+
+  const handleSavePasswordProtection = async () => {
+    setSavingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('set-profile-password', {
+        body: { 
+          password: profilePassword,
+          enabled: isPasswordProtected 
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(isPasswordProtected ? 'Password protection enabled!' : 'Password protection disabled!');
+      setProfilePassword('');
+    } catch (error: any) {
+      console.error('Password protection error:', error);
+      toast.error(error.message || 'Failed to update password protection');
+    }
+    setSavingPassword(false);
   };
 
   const handleSaveSEO = async () => {
@@ -661,23 +680,58 @@ export default function DashboardSettingsPage({
                 />
               </div>
 
-              <div className="flex items-center justify-between opacity-50">
-                <div>
-                  <Label className="flex items-center gap-2">
-                    <Lock className="w-4 h-4" />
-                    Password Protection
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Require a password to view your profile
-                  </p>
-                  <p className="text-xs text-amber-600 mt-1">
-                    Coming soon - secure password protection
-                  </p>
+              <div className="space-y-4 p-4 border border-border rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="flex items-center gap-2">
+                      <Lock className="w-4 h-4" />
+                      Password Protection
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Require a password to view your profile
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={isPasswordProtected}
+                    onCheckedChange={setIsPasswordProtected}
+                  />
                 </div>
-                <Switch 
-                  checked={false}
-                  disabled
-                />
+
+                {isPasswordProtected && (
+                  <div className="space-y-2">
+                    <Label htmlFor="profilePassword">Profile Password</Label>
+                    <Input 
+                      id="profilePassword"
+                      type="password"
+                      value={profilePassword}
+                      onChange={(e) => setProfilePassword(e.target.value)}
+                      placeholder="Enter a password (min 4 characters)"
+                      className="mt-1"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Visitors will need this password to view your profile. Password is securely encrypted.
+                    </p>
+                  </div>
+                )}
+
+                <Button 
+                  onClick={handleSavePasswordProtection}
+                  disabled={savingPassword || (isPasswordProtected && profilePassword.length < 4)}
+                  size="sm"
+                  className="w-full"
+                >
+                  {savingPassword ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="w-4 h-4 mr-2" />
+                      {isPasswordProtected ? 'Enable Password Protection' : 'Disable Password Protection'}
+                    </>
+                  )}
+                </Button>
               </div>
 
               <div className="flex items-center justify-between">
