@@ -23,6 +23,7 @@ import {
   Code,
   Columns,
   Clock,
+  ShoppingBag,
 } from 'lucide-react';
 import { Block } from '@/hooks/useLinkProfile';
 import { Button } from '@/components/ui/button';
@@ -52,6 +53,7 @@ import ImageBlockEditor from './editors/ImageBlockEditor';
 import ScheduledBlockEditor from './editors/ScheduledBlockEditor';
 import HtmlBlockEditor from './editors/HtmlBlockEditor';
 import FeaturedBlockEditor from './editors/FeaturedBlockEditor';
+import ShopBlockEditor from './editors/ShopBlockEditor';
 
 interface SortableBlockProps {
   block: Block;
@@ -62,6 +64,7 @@ interface SortableBlockProps {
 const blockTypeIcons: Record<string, typeof LinkIcon> = {
   link: LinkIcon,
   cta: ExternalLink,
+  shop: ShoppingBag,
   text: Type,
   image: Image,
   featured: Star,
@@ -79,6 +82,7 @@ const blockTypeIcons: Record<string, typeof LinkIcon> = {
 const blockTypeLabels: Record<string, string> = {
   link: 'Link',
   cta: 'CTA Button',
+  shop: 'Buy Now / Shop',
   text: 'Text Block',
   image: 'Image',
   featured: 'Featured Card',
@@ -128,6 +132,8 @@ export default function SortableBlock({ block, onUpdate, onDelete }: SortableBlo
       case 'link':
       case 'cta':
         return <LinkBlockEditor {...commonProps} />;
+      case 'shop':
+        return <ShopBlockEditor {...commonProps} />;
       case 'carousel':
         return <CarouselBlockEditor {...commonProps} />;
       case 'video':

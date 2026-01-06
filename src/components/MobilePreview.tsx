@@ -19,6 +19,7 @@ import {
   Facebook,
   Music2,
   Ghost,
+  ShoppingBag,
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useRef } from 'react';
@@ -343,36 +344,114 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'link':
     case 'cta':
       return (
-        <div 
-          className="w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 cursor-pointer group"
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer group"
           style={pillStyle}
         >
-          {block.thumbnail_url ? (
-            <img 
-              src={block.thumbnail_url} 
-              alt="" 
-              className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-            />
-          ) : block.icon ? (
-            <div 
-              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `${theme.accent}20` }}
-            >
-              <span className="text-base">{block.icon}</span>
+          <div className="flex items-center gap-2">
+            {block.thumbnail_url ? (
+              <img 
+                src={block.thumbnail_url} 
+                alt="" 
+                className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+              />
+            ) : block.icon ? (
+              <div 
+                className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${theme.accent}20` }}
+              >
+                <span className="text-base">{block.icon}</span>
+              </div>
+            ) : null}
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="text-xs font-semibold leading-tight line-clamp-2">
+                {block.title || 'Untitled Link'}
+              </h3>
+              {block.subtitle && (
+                <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
+              )}
             </div>
-          ) : null}
-          <div className="flex-1 min-w-0 text-center">
-            <h3 className="text-xs font-semibold leading-tight line-clamp-2">
-              {block.title || 'Untitled Link'}
-            </h3>
-            {block.subtitle && (
-              <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
-            )}
+            {block.thumbnail_url || block.icon ? (
+              <div className="w-7 h-7 flex-shrink-0" /> 
+            ) : null}
           </div>
-          {block.thumbnail_url || block.icon ? (
-            <div className="w-7 h-7 flex-shrink-0" /> 
-          ) : null}
-        </div>
+        </a>
+      );
+
+    case 'shop':
+      const shopContent = block.content as { 
+        price?: string; 
+        currency?: string; 
+        original_price?: string; 
+        badge?: string;
+        product_type?: string;
+      } | undefined;
+      const currencySymbols: Record<string, string> = {
+        USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
+      };
+      const symbol = currencySymbols[shopContent?.currency || 'USD'] || '$';
+      return (
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] overflow-hidden transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer shadow-lg"
+          style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+        >
+          <div className="flex items-center gap-2 p-2">
+            {block.thumbnail_url ? (
+              <img 
+                src={block.thumbnail_url} 
+                alt="" 
+                className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+              />
+            ) : (
+              <div 
+                className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${theme.accent}15` }}
+              >
+                <ShoppingBag className="w-5 h-5" style={{ color: theme.accent }} />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-xs font-semibold leading-tight truncate" style={{ color: theme.text }}>
+                  {block.title || 'Product'}
+                </h3>
+                {shopContent?.badge && (
+                  <span 
+                    className="text-[8px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                    style={{ backgroundColor: theme.accent, color: '#fff' }}
+                  >
+                    {shopContent.badge}
+                  </span>
+                )}
+              </div>
+              {block.subtitle && (
+                <p className="text-[10px] truncate opacity-60" style={{ color: theme.text }}>{block.subtitle}</p>
+              )}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="text-xs font-bold" style={{ color: theme.accent }}>
+                  {symbol}{shopContent?.price || '0.00'}
+                </span>
+                {shopContent?.original_price && (
+                  <span className="text-[10px] line-through opacity-50" style={{ color: theme.text }}>
+                    {symbol}{shopContent.original_price}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div 
+              className="px-2 py-1 rounded-full text-[10px] font-semibold flex-shrink-0"
+              style={{ backgroundColor: theme.accent, color: '#fff' }}
+            >
+              Buy
+            </div>
+          </div>
+        </a>
       );
 
     case 'text':
@@ -401,8 +480,11 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
 
     case 'image':
       return (
-        <div 
-          className="w-[110%] -ml-[5%] overflow-hidden shadow-lg"
+        <a 
+          href={block.url || undefined}
+          target={block.url && block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.url && block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className={`block w-[110%] -ml-[5%] overflow-hidden shadow-lg ${block.url ? 'cursor-pointer hover:scale-[1.02] transition-transform' : ''}`}
           style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
         >
           {block.thumbnail_url && (
@@ -418,7 +500,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
               {block.subtitle && <p className="text-[11px] opacity-60">{block.subtitle}</p>}
             </div>
           )}
-        </div>
+        </a>
       );
 
     case 'divider':
@@ -433,8 +515,11 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
 
     case 'featured':
       return (
-        <div 
-          className="w-[110%] -ml-[5%] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
           style={{ 
             background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}dd)`, 
             color: '#ffffff',
@@ -454,13 +539,16 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
               <p className="text-xs opacity-90 mt-1">{block.subtitle}</p>
             )}
           </div>
-        </div>
+        </a>
       );
 
     case 'video':
       return (
-        <div 
-          className="w-[110%] -ml-[5%] overflow-hidden cursor-pointer shadow-lg"
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] overflow-hidden cursor-pointer shadow-lg hover:scale-[1.02] transition-transform"
           style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
         >
           <div className="relative aspect-video bg-black/10">
@@ -497,38 +585,43 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
               <p className="text-[11px] opacity-60 truncate">{block.subtitle}</p>
             )}
           </div>
-        </div>
+        </a>
       );
 
     case 'music':
       return (
-        <div 
-          className="w-[110%] -ml-[5%] py-2 px-3 flex items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] py-2 px-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           style={pillStyle}
         >
-          <div 
-            className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${theme.accent}40, ${theme.accent}20)` }}
-          >
-            {block.thumbnail_url ? (
-              <img src={block.thumbnail_url} alt="" className="w-full h-full object-cover" />
-            ) : (
-              <Music className="w-4 h-4" style={{ color: theme.accent }} />
-            )}
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden"
+              style={{ background: `linear-gradient(135deg, ${theme.accent}40, ${theme.accent}20)` }}
+            >
+              {block.thumbnail_url ? (
+                <img src={block.thumbnail_url} alt="" className="w-full h-full object-cover" />
+              ) : (
+                <Music className="w-4 h-4" style={{ color: theme.accent }} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs font-semibold leading-tight line-clamp-2">{block.title || 'Track'}</h3>
+              {block.subtitle && (
+                <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
+              )}
+            </div>
+            <div 
+              className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: theme.accent }}
+            >
+              <Play className="w-3 h-3 text-white ml-0.5" />
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-xs font-semibold leading-tight line-clamp-2">{block.title || 'Track'}</h3>
-            {block.subtitle && (
-              <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
-            )}
-          </div>
-          <div 
-            className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: theme.accent }}
-          >
-            <Play className="w-3 h-3 text-white ml-0.5" />
-          </div>
-        </div>
+        </a>
       );
 
     case 'contact_call':
@@ -539,32 +632,34 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
         contact_email: Mail,
       };
       const ContactIcon = block.type !== 'contact_whatsapp' ? contactIcons[block.type as 'contact_call' | 'contact_email'] : null;
-      // Use same style as regular buttons - no special colors
       return (
-        <div 
-          className="w-[110%] -ml-[5%] py-2 px-3 flex items-center gap-2 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+        <a 
+          href={block.url || '#'}
+          className="block w-[110%] -ml-[5%] py-2 px-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           style={pillStyle}
         >
-          <div 
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ backgroundColor: `${theme.accent}20` }}
-          >
-            {block.type === 'contact_whatsapp' ? (
-              <svg viewBox="0 0 24 24" className="w-4 h-4" fill={theme.text}>
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-            ) : (
-              ContactIcon && <ContactIcon className="w-4 h-4" style={{ color: theme.text }} />
-            )}
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ backgroundColor: `${theme.accent}20` }}
+            >
+              {block.type === 'contact_whatsapp' ? (
+                <svg viewBox="0 0 24 24" className="w-4 h-4" fill={theme.text}>
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+              ) : (
+                ContactIcon && <ContactIcon className="w-4 h-4" style={{ color: theme.text }} />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="text-xs font-semibold leading-tight line-clamp-2">{block.title}</h3>
+              {block.subtitle && (
+                <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
+              )}
+            </div>
+            <div className="w-7 flex-shrink-0" />
           </div>
-          <div className="flex-1 min-w-0 text-center">
-            <h3 className="text-xs font-semibold leading-tight line-clamp-2">{block.title}</h3>
-            {block.subtitle && (
-              <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
-            )}
-          </div>
-          <div className="w-7 flex-shrink-0" />
-        </div>
+        </a>
       );
 
     case 'carousel':
@@ -649,24 +744,29 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
 
     case 'scheduled':
       return (
-        <div 
-          className="w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-2 cursor-pointer"
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           style={pillStyle}
         >
-          <div 
-            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
-            style={{ background: `linear-gradient(135deg, ${theme.accent}30, ${theme.accent}15)` }}
-          >
-            <Clock className="w-3.5 h-3.5" style={{ color: theme.accent }} />
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: `linear-gradient(135deg, ${theme.accent}30, ${theme.accent}15)` }}
+            >
+              <Clock className="w-3.5 h-3.5" style={{ color: theme.accent }} />
+            </div>
+            <div className="flex-1 min-w-0 text-center">
+              <h3 className="text-xs font-semibold leading-tight line-clamp-2">{block.title}</h3>
+              {block.subtitle && (
+                <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
+              )}
+            </div>
+            <div className="w-7 flex-shrink-0" />
           </div>
-          <div className="flex-1 min-w-0 text-center">
-            <h3 className="text-xs font-semibold leading-tight line-clamp-2">{block.title}</h3>
-            {block.subtitle && (
-              <p className="text-[10px] truncate opacity-60">{block.subtitle}</p>
-            )}
-          </div>
-          <div className="w-7 flex-shrink-0" />
-        </div>
+        </a>
       );
 
     case 'html':
@@ -684,14 +784,17 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
 
     default:
       return (
-        <div 
-          className="w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+        <a 
+          href={block.url || '#'}
+          target={block.open_in_new_tab ? '_blank' : undefined}
+          rel={block.open_in_new_tab ? 'noopener noreferrer' : undefined}
+          className="block w-[110%] -ml-[5%] py-2 px-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           style={pillStyle}
         >
           <h3 className="text-xs font-semibold text-center leading-tight line-clamp-2">
             {block.title || 'Block'}
           </h3>
-        </div>
+        </a>
       );
   }
 }

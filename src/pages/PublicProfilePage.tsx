@@ -309,6 +309,61 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
         </button>
       );
 
+    case 'shop':
+      const content = (block as any).content as { 
+        price?: string; 
+        currency?: string; 
+        original_price?: string; 
+        badge?: string;
+      } | undefined;
+      const currencySymbols: Record<string, string> = {
+        USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
+      };
+      const symbol = currencySymbols[content?.currency || 'USD'] || '$';
+      return (
+        <button onClick={onClick} className="w-full rounded-2xl bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg overflow-hidden">
+          <div className="flex items-center gap-3 p-4">
+            {block.thumbnail_url ? (
+              <img 
+                src={block.thumbnail_url} 
+                alt="" 
+                className="w-14 h-14 rounded-xl object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">🛍️</span>
+              </div>
+            )}
+            <div className="flex-1 min-w-0 text-left">
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground truncate">{block.title || 'Product'}</h3>
+                {content?.badge && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-primary-foreground font-medium">
+                    {content.badge}
+                  </span>
+                )}
+              </div>
+              {block.subtitle && (
+                <p className="text-sm text-muted-foreground truncate">{block.subtitle}</p>
+              )}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="font-bold text-primary">
+                  {symbol}{content?.price || '0.00'}
+                </span>
+                {content?.original_price && (
+                  <span className="text-sm text-muted-foreground line-through">
+                    {symbol}{content.original_price}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="px-4 py-2 rounded-full gradient-primary text-primary-foreground text-sm font-semibold flex-shrink-0">
+              Buy Now
+            </div>
+          </div>
+        </button>
+      );
+
     case 'text':
       return (
         <div className="w-full py-4 px-5 rounded-2xl bg-card/90 backdrop-blur-xl">
