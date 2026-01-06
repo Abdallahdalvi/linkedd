@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { Block } from '@/hooks/useLinkProfile';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,7 +15,7 @@ interface ShopBlockEditorProps {
   onCancel: () => void;
 }
 
-export default function ShopBlockEditor({ block, onSave, onCancel }: ShopBlockEditorProps) {
+const ShopBlockEditor = forwardRef<HTMLFormElement, ShopBlockEditorProps>(function ShopBlockEditor({ block, onSave, onCancel }, ref) {
   const [form, setForm] = useState({
     title: block?.title || '',
     subtitle: block?.subtitle || '',
@@ -61,7 +61,7 @@ export default function ShopBlockEditor({ block, onSave, onCancel }: ShopBlockEd
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form ref={ref} onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
         <Label htmlFor="title">Product Name *</Label>
         <Input
@@ -335,4 +335,6 @@ export default function ShopBlockEditor({ block, onSave, onCancel }: ShopBlockEd
       </div>
     </form>
   );
-}
+});
+
+export default ShopBlockEditor;
