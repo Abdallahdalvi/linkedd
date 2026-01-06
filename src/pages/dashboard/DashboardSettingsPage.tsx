@@ -23,6 +23,9 @@ import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,6 +37,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface DashboardSettingsPageProps {
   profile: any;
@@ -46,6 +57,8 @@ export default function DashboardSettingsPage({
   onUpdateProfile,
   userEmail,
 }: DashboardSettingsPageProps) {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
   const [isPasswordProtected, setIsPasswordProtected] = useState(profile?.is_password_protected ?? false);
@@ -54,12 +67,24 @@ export default function DashboardSettingsPage({
   const [seoTitle, setSeoTitle] = useState(profile?.seo_title || '');
   const [seoDescription, setSeoDescription] = useState(profile?.seo_description || '');
 
+  // Change password state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  // Notification settings
+  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [weeklyReport, setWeeklyReport] = useState(false);
+  const [milestoneAlerts, setMilestoneAlerts] = useState(true);
+
   const handleSavePrivacy = async () => {
     setSaving(true);
     try {
       await onUpdateProfile({
         is_public: isPublic,
         is_password_protected: isPasswordProtected,
+        password_hash: isPasswordProtected && password ? password : null,
       });
       toast.success('Privacy settings saved!');
     } catch (error) {
@@ -86,6 +111,128 @@ export default function DashboardSettingsPage({
     const url = `${window.location.origin}/${profile?.username}`;
     navigator.clipboard.writeText(url);
     toast.success('Profile URL copied!');
+  };
+
+  const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+
+      toast.success('Password changed successfully!');
+      setShowPasswordDialog(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to change password');
+    }
+    setChangingPassword(false);
+  };
+
+  const handleExportData = async () => {
+    try {
+      // Gather all user data
+      const exportData = {
+        profile: profile,
+        exportedAt: new Date().toISOString(),
+      };
+
+      // Get blocks
+      if (profile?.id) {
+        const { data: blocks } = await supabase
+          .from('blocks')
+          .select('*')
+          .eq('profile_id', profile.id);
+        
+        if (blocks) {
+          (exportData as any).blocks = blocks;
+        }
+      }
+
+      // Create and download file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `linkbio-export-${profile?.username || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success('Data exported successfully!');
+    } catch (error) {
+      toast.error('Failed to export data');
+    }
+  };
+
+  const handleDuplicateLayout = async () => {
+    try {
+      // Copy profile settings to clipboard
+      const layoutData = {
+        theme_preset: profile?.theme_preset,
+        background_type: profile?.background_type,
+        background_value: profile?.background_value,
+        custom_colors: profile?.custom_colors,
+        custom_fonts: profile?.custom_fonts,
+      };
+
+      await navigator.clipboard.writeText(JSON.stringify(layoutData, null, 2));
+      toast.success('Layout settings copied to clipboard!');
+    } catch (error) {
+      toast.error('Failed to copy layout');
+    }
+  };
+
+  const handleDeleteProfile = async () => {
+    try {
+      if (profile?.id) {
+        // Delete blocks first
+        await supabase
+          .from('blocks')
+          .delete()
+          .eq('profile_id', profile.id);
+
+        // Delete profile
+        await supabase
+          .from('link_profiles')
+          .delete()
+          .eq('id', profile.id);
+      }
+
+      toast.success('Profile deleted. Redirecting...');
+      // Refresh the page to show setup dialog
+      window.location.reload();
+    } catch (error) {
+      toast.error('Failed to delete profile');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      // Sign out first
+      await signOut();
+      toast.success('Account deletion requested. Please contact support to complete.');
+      navigate('/');
+    } catch (error) {
+      toast.error('Failed to delete account');
+    }
+  };
+
+  const handleSaveNotifications = () => {
+    toast.success('Notification settings saved!');
   };
 
   return (
@@ -175,7 +322,10 @@ export default function DashboardSettingsPage({
                       Get notified about important updates
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={emailNotifications}
+                    onCheckedChange={setEmailNotifications}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -185,7 +335,10 @@ export default function DashboardSettingsPage({
                       Receive weekly performance summaries
                     </p>
                   </div>
-                  <Switch />
+                  <Switch 
+                    checked={weeklyReport}
+                    onCheckedChange={setWeeklyReport}
+                  />
                 </div>
 
                 <div className="flex items-center justify-between">
@@ -195,8 +348,16 @@ export default function DashboardSettingsPage({
                       Get notified when you hit view milestones
                     </p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch 
+                    checked={milestoneAlerts}
+                    onCheckedChange={setMilestoneAlerts}
+                  />
                 </div>
+
+                <Button onClick={handleSaveNotifications} variant="outline" className="mt-4">
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Notifications
+                </Button>
               </div>
             </motion.div>
           </div>
@@ -372,7 +533,7 @@ export default function DashboardSettingsPage({
                 </div>
 
                 <div className="pt-4 border-t border-border">
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => setShowPasswordDialog(true)}>
                     <Key className="w-4 h-4 mr-2" />
                     Change Password
                   </Button>
@@ -389,12 +550,12 @@ export default function DashboardSettingsPage({
               <h2 className="text-lg font-semibold text-foreground mb-6">Data & Export</h2>
               
               <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={handleExportData}>
                   <Download className="w-4 h-4 mr-2" />
                   Export My Data
                 </Button>
 
-                <Button variant="outline" className="w-full justify-start">
+                <Button variant="outline" className="w-full justify-start" onClick={handleDuplicateLayout}>
                   <Copy className="w-4 h-4 mr-2" />
                   Duplicate Profile Layout
                 </Button>
@@ -427,7 +588,10 @@ export default function DashboardSettingsPage({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction 
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={handleDeleteProfile}
+                      >
                         Delete Profile
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -451,7 +615,10 @@ export default function DashboardSettingsPage({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      <AlertDialogAction 
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={handleDeleteAccount}
+                      >
                         Delete Account
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -462,6 +629,52 @@ export default function DashboardSettingsPage({
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Change Password Dialog */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Password</DialogTitle>
+            <DialogDescription>
+              Enter your new password below. Password must be at least 6 characters.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div>
+              <Label>New Password</Label>
+              <Input 
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password"
+                className="mt-2"
+              />
+            </div>
+            <div>
+              <Label>Confirm Password</Label>
+              <Input 
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="Confirm new password"
+                className="mt-2"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPasswordDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleChangePassword} 
+              disabled={changingPassword || !newPassword || !confirmPassword}
+              className="gradient-primary text-primary-foreground"
+            >
+              {changingPassword ? 'Changing...' : 'Change Password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

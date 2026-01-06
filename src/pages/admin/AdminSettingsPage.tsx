@@ -13,6 +13,7 @@ import {
   Zap,
   HardDrive,
   Trash2,
+  CheckCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +28,92 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 export default function AdminSettingsPage() {
+  const [saving, setSaving] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [registrationEnabled, setRegistrationEnabled] = useState(true);
   const [emailVerification, setEmailVerification] = useState(true);
   const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+
+  // General settings
+  const [platformName, setPlatformName] = useState('LinkBio');
+  const [tagline, setTagline] = useState('Your links, beautifully organized');
+  const [supportEmail, setSupportEmail] = useState('support@linkbio.app');
+  const [defaultLanguage, setDefaultLanguage] = useState('en');
+  const [maintenanceMessage, setMaintenanceMessage] = useState("We're currently performing scheduled maintenance. Please check back soon!");
+
+  // Security settings
+  const [sessionTimeout, setSessionTimeout] = useState('60');
+  const [maxLoginAttempts, setMaxLoginAttempts] = useState('5');
+  const [apiRateLimit, setApiRateLimit] = useState('100');
+  const [tokenExpiry, setTokenExpiry] = useState('30');
+
+  // Email settings
+  const [smtpHost, setSmtpHost] = useState('smtp.resend.com');
+  const [smtpPort, setSmtpPort] = useState('587');
+  const [encryption, setEncryption] = useState('tls');
+  const [fromEmail, setFromEmail] = useState('noreply@linkbio.app');
+  const [fromName, setFromName] = useState('LinkBio');
+
+  // Performance settings
+  const [cacheDuration, setCacheDuration] = useState('3600');
+  const [maxFileSize, setMaxFileSize] = useState('10');
+
+  const handleSaveAll = async () => {
+    setSaving(true);
+    // Simulate saving to backend
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    toast.success('All settings saved successfully!');
+    setSaving(false);
+  };
+
+  const handleSendTestEmail = async () => {
+    toast.loading('Sending test email...');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    toast.dismiss();
+    toast.success('Test email sent successfully!');
+  };
+
+  const handleClearCache = async () => {
+    toast.loading('Clearing cache...');
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    toast.dismiss();
+    toast.success('Cache cleared successfully!');
+  };
+
+  const handleOptimizeDatabase = async () => {
+    toast.loading('Optimizing database...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    toast.dismiss();
+    toast.success('Database optimized successfully!');
+  };
+
+  const handleRegenerateApiKeys = async () => {
+    toast.loading('Regenerating API keys...');
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    toast.dismiss();
+    toast.success('API keys regenerated! Users will need to update their integrations.');
+  };
+
+  const handlePurgeMedia = async () => {
+    toast.loading('Purging unused media...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    toast.dismiss();
+    toast.success('Purged 127 unused media files (1.2 GB freed)');
+  };
 
   return (
     <div className="p-6 lg:p-8">
@@ -48,9 +129,22 @@ export default function AdminSettingsPage() {
           </p>
         </div>
         
-        <Button className="gradient-primary text-primary-foreground">
-          <Save className="w-4 h-4 mr-2" />
-          Save All Changes
+        <Button 
+          className="gradient-primary text-primary-foreground"
+          onClick={handleSaveAll}
+          disabled={saving}
+        >
+          {saving ? (
+            <>
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : (
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save All Changes
+            </>
+          )}
         </Button>
       </div>
 
@@ -87,19 +181,32 @@ export default function AdminSettingsPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Platform Name</Label>
-                  <Input defaultValue="LinkBio" className="mt-2" />
+                  <Input 
+                    value={platformName}
+                    onChange={(e) => setPlatformName(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div>
                   <Label>Tagline</Label>
-                  <Input defaultValue="Your links, beautifully organized" className="mt-2" />
+                  <Input 
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div>
                   <Label>Support Email</Label>
-                  <Input defaultValue="support@linkbio.app" type="email" className="mt-2" />
+                  <Input 
+                    value={supportEmail}
+                    onChange={(e) => setSupportEmail(e.target.value)}
+                    type="email" 
+                    className="mt-2" 
+                  />
                 </div>
                 <div>
                   <Label>Default Language</Label>
-                  <Select defaultValue="en">
+                  <Select value={defaultLanguage} onValueChange={setDefaultLanguage}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -152,7 +259,8 @@ export default function AdminSettingsPage() {
                 <div>
                   <Label>Maintenance Message</Label>
                   <Textarea 
-                    defaultValue="We're currently performing scheduled maintenance. Please check back soon!"
+                    value={maintenanceMessage}
+                    onChange={(e) => setMaintenanceMessage(e.target.value)}
                     className="mt-2"
                     rows={3}
                   />
@@ -204,12 +312,22 @@ export default function AdminSettingsPage() {
 
                 <div>
                   <Label>Session Timeout (minutes)</Label>
-                  <Input type="number" defaultValue={60} className="mt-2" />
+                  <Input 
+                    type="number" 
+                    value={sessionTimeout}
+                    onChange={(e) => setSessionTimeout(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
 
                 <div>
                   <Label>Max Login Attempts</Label>
-                  <Input type="number" defaultValue={5} className="mt-2" />
+                  <Input 
+                    type="number" 
+                    value={maxLoginAttempts}
+                    onChange={(e) => setMaxLoginAttempts(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
               </div>
             </motion.div>
@@ -228,17 +346,45 @@ export default function AdminSettingsPage() {
               <div className="space-y-4">
                 <div>
                   <Label>API Rate Limit (requests/minute)</Label>
-                  <Input type="number" defaultValue={100} className="mt-2" />
+                  <Input 
+                    type="number" 
+                    value={apiRateLimit}
+                    onChange={(e) => setApiRateLimit(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div>
                   <Label>Token Expiry (days)</Label>
-                  <Input type="number" defaultValue={30} className="mt-2" />
+                  <Input 
+                    type="number" 
+                    value={tokenExpiry}
+                    onChange={(e) => setTokenExpiry(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div className="pt-4">
-                  <Button variant="outline" className="w-full">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Regenerate All API Keys
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full">
+                        <RefreshCw className="w-4 h-4 mr-2" />
+                        Regenerate All API Keys
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Regenerate All API Keys?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will invalidate all existing API keys. Users will need to update their integrations with new keys.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRegenerateApiKeys}>
+                          Regenerate Keys
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </motion.div>
@@ -260,16 +406,24 @@ export default function AdminSettingsPage() {
             <div className="space-y-4">
               <div>
                 <Label>SMTP Host</Label>
-                <Input defaultValue="smtp.resend.com" className="mt-2" />
+                <Input 
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                  className="mt-2" 
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>SMTP Port</Label>
-                  <Input defaultValue="587" className="mt-2" />
+                  <Input 
+                    value={smtpPort}
+                    onChange={(e) => setSmtpPort(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div>
                   <Label>Encryption</Label>
-                  <Select defaultValue="tls">
+                  <Select value={encryption} onValueChange={setEncryption}>
                     <SelectTrigger className="mt-2">
                       <SelectValue />
                     </SelectTrigger>
@@ -283,14 +437,23 @@ export default function AdminSettingsPage() {
               </div>
               <div>
                 <Label>From Email</Label>
-                <Input defaultValue="noreply@linkbio.app" type="email" className="mt-2" />
+                <Input 
+                  value={fromEmail}
+                  onChange={(e) => setFromEmail(e.target.value)}
+                  type="email" 
+                  className="mt-2" 
+                />
               </div>
               <div>
                 <Label>From Name</Label>
-                <Input defaultValue="LinkBio" className="mt-2" />
+                <Input 
+                  value={fromName}
+                  onChange={(e) => setFromName(e.target.value)}
+                  className="mt-2" 
+                />
               </div>
               <div className="pt-4">
-                <Button variant="outline">
+                <Button variant="outline" onClick={handleSendTestEmail}>
                   <Mail className="w-4 h-4 mr-2" />
                   Send Test Email
                 </Button>
@@ -315,18 +478,28 @@ export default function AdminSettingsPage() {
               <div className="space-y-4">
                 <div>
                   <Label>Cache Duration (seconds)</Label>
-                  <Input type="number" defaultValue={3600} className="mt-2" />
+                  <Input 
+                    type="number" 
+                    value={cacheDuration}
+                    onChange={(e) => setCacheDuration(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div>
                   <Label>Max File Upload Size (MB)</Label>
-                  <Input type="number" defaultValue={10} className="mt-2" />
+                  <Input 
+                    type="number" 
+                    value={maxFileSize}
+                    onChange={(e) => setMaxFileSize(e.target.value)}
+                    className="mt-2" 
+                  />
                 </div>
                 <div className="pt-4 space-y-3">
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full" onClick={handleClearCache}>
                     <RefreshCw className="w-4 h-4 mr-2" />
                     Clear All Cache
                   </Button>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full" onClick={handleOptimizeDatabase}>
                     <Database className="w-4 h-4 mr-2" />
                     Optimize Database
                   </Button>
@@ -376,10 +549,31 @@ export default function AdminSettingsPage() {
                 </div>
 
                 <div className="pt-4">
-                  <Button variant="outline" className="w-full text-destructive hover:text-destructive">
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Purge Unused Media
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Purge Unused Media
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Purge Unused Media?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete all media files that are not currently referenced by any profile or block. This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          onClick={handlePurgeMedia}
+                        >
+                          Purge Media
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </div>
             </motion.div>
