@@ -14,6 +14,9 @@ import {
   Save,
   Eye,
   Camera,
+  Facebook,
+  Music2,
+  Ghost,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,6 +50,10 @@ export default function DashboardProfilePage({
     twitter: profile?.social_links?.twitter || '',
     youtube: profile?.social_links?.youtube || '',
     linkedin: profile?.social_links?.linkedin || '',
+    tiktok: profile?.social_links?.tiktok || '',
+    facebook: profile?.social_links?.facebook || '',
+    snapchat: profile?.social_links?.snapchat || '',
+    pinterest: profile?.social_links?.pinterest || '',
     email: profile?.social_links?.email || '',
     phone: profile?.social_links?.phone || '',
     website: profile?.social_links?.website || '',
@@ -75,13 +82,17 @@ export default function DashboardProfilePage({
   };
 
   const socialInputs = [
-    { key: 'instagram', label: 'Instagram', icon: Instagram, placeholder: '@username' },
-    { key: 'twitter', label: 'Twitter / X', icon: Twitter, placeholder: '@username' },
-    { key: 'youtube', label: 'YouTube', icon: Youtube, placeholder: 'Channel URL' },
-    { key: 'linkedin', label: 'LinkedIn', icon: Linkedin, placeholder: 'Profile URL' },
-    { key: 'email', label: 'Email', icon: Mail, placeholder: 'you@example.com' },
-    { key: 'phone', label: 'Phone', icon: Phone, placeholder: '+1 234 567 8900' },
-    { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://yoursite.com' },
+    { key: 'instagram', label: 'Instagram', icon: Instagram, placeholder: '@username', color: '#E4405F' },
+    { key: 'twitter', label: 'Twitter / X', icon: Twitter, placeholder: '@username', color: '#1DA1F2' },
+    { key: 'youtube', label: 'YouTube', icon: Youtube, placeholder: 'Channel URL', color: '#FF0000' },
+    { key: 'linkedin', label: 'LinkedIn', icon: Linkedin, placeholder: 'Profile URL', color: '#0A66C2' },
+    { key: 'tiktok', label: 'TikTok', icon: Music2, placeholder: '@username', color: '#000000' },
+    { key: 'facebook', label: 'Facebook', icon: Facebook, placeholder: 'Profile URL', color: '#1877F2' },
+    { key: 'snapchat', label: 'Snapchat', icon: Ghost, placeholder: '@username', color: '#FFFC00' },
+    { key: 'pinterest', label: 'Pinterest', icon: MapPin, placeholder: 'Profile URL', color: '#E60023' },
+    { key: 'email', label: 'Email', icon: Mail, placeholder: 'you@example.com', color: '#EA4335' },
+    { key: 'phone', label: 'Phone', icon: Phone, placeholder: '+1 234 567 8900', color: '#25D366' },
+    { key: 'website', label: 'Website', icon: Globe, placeholder: 'https://yoursite.com', color: '#6366F1' },
   ];
 
   const updatedProfile = {
@@ -238,7 +249,7 @@ export default function DashboardProfilePage({
               {socialInputs.map((social) => (
                 <div key={social.key}>
                   <Label className="flex items-center gap-2">
-                    <social.icon className="w-4 h-4" />
+                    <social.icon className="w-4 h-4" style={{ color: social.color }} />
                     {social.label}
                   </Label>
                   <Input 
