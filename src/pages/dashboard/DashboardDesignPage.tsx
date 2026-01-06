@@ -33,18 +33,21 @@ interface DashboardDesignPageProps {
 }
 
 export const themePresets = [
-  { id: 'default', name: 'Default', bg: '#ffffff', text: '#1a1a1a', accent: '#6366f1', cardBg: '#f8fafc' },
-  { id: 'dark', name: 'Dark', bg: '#1a1a2e', text: '#ffffff', accent: '#6366f1', cardBg: '#2d2d44' },
-  { id: 'ocean', name: 'Ocean', bg: '#0f172a', text: '#ffffff', accent: '#0ea5e9', cardBg: '#1e293b' },
-  { id: 'forest', name: 'Forest', bg: '#14532d', text: '#ffffff', accent: '#22c55e', cardBg: '#166534' },
-  { id: 'sunset', name: 'Sunset', bg: '#451a03', text: '#ffffff', accent: '#f97316', cardBg: '#7c2d12' },
-  { id: 'rose', name: 'Rose', bg: '#fdf2f8', text: '#831843', accent: '#ec4899', cardBg: '#fce7f3' },
-  { id: 'midnight', name: 'Midnight', bg: '#0c0a1d', text: '#e2e8f0', accent: '#a78bfa', cardBg: '#1e1b4b' },
-  { id: 'minimal', name: 'Minimal', bg: '#fafafa', text: '#171717', accent: '#171717', cardBg: '#ffffff' },
-  { id: 'neon', name: 'Neon', bg: '#0a0a0a', text: '#00ff88', accent: '#00ff88', cardBg: '#1a1a1a' },
-  { id: 'lavender', name: 'Lavender', bg: '#f5f3ff', text: '#4c1d95', accent: '#8b5cf6', cardBg: '#ede9fe' },
-  { id: 'coral', name: 'Coral', bg: '#fff7ed', text: '#9a3412', accent: '#fb923c', cardBg: '#ffedd5' },
-  { id: 'arctic', name: 'Arctic', bg: '#f0f9ff', text: '#0c4a6e', accent: '#38bdf8', cardBg: '#e0f2fe' },
+  // Solid themes
+  { id: 'minimal', name: 'Minimal', bg: '#ffffff', text: '#1a1a1a', accent: '#1a1a1a', cardBg: '#ffffff', gradient: false },
+  { id: 'dark', name: 'Dark Mode', bg: '#0f0f0f', text: '#ffffff', accent: '#ffffff', cardBg: '#1a1a1a', gradient: false },
+  { id: 'cream', name: 'Cream', bg: '#fefdf8', text: '#292524', accent: '#78716c', cardBg: '#ffffff', gradient: false },
+  { id: 'blush', name: 'Blush', bg: '#fdf2f8', text: '#831843', accent: '#ec4899', cardBg: '#ffffff', gradient: false },
+  
+  // Gradient themes (Linktree-style)
+  { id: 'sunset-glow', name: 'Sunset Glow', bg: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)', text: '#1a1a1a', accent: '#ec4899', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
+  { id: 'ocean-breeze', name: 'Ocean Breeze', bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', text: '#ffffff', accent: '#a78bfa', cardBg: 'rgba(30,30,60,0.9)', gradient: true },
+  { id: 'mint-fresh', name: 'Mint Fresh', bg: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', text: '#1a1a1a', accent: '#14b8a6', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
+  { id: 'purple-haze', name: 'Purple Haze', bg: 'linear-gradient(180deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)', text: '#ffffff', accent: '#c4b5fd', cardBg: 'rgba(30,27,75,0.9)', gradient: true },
+  { id: 'coral-reef', name: 'Coral Reef', bg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', text: '#1a1a1a', accent: '#f43f5e', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
+  { id: 'aurora', name: 'Aurora', bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 50%, #667eea 100%)', text: '#1a1a1a', accent: '#10b981', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
+  { id: 'midnight-blue', name: 'Midnight', bg: 'linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e293b 100%)', text: '#e2e8f0', accent: '#38bdf8', cardBg: 'rgba(15,23,42,0.95)', gradient: true },
+  { id: 'rose-gold', name: 'Rose Gold', bg: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', text: '#7c2d12', accent: '#f97316', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
 ];
 
 const backgroundTypes = [
@@ -283,15 +286,21 @@ export default function DashboardDesignPage({
                       <Label>Gradient Presets</Label>
                       <div className="grid grid-cols-4 gap-3 mt-2">
                         {[
+                          'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)',
                           'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                           'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
                           'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
                           'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+                          'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                          'linear-gradient(180deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)',
+                          'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
                         ].map((gradient, i) => (
                           <button
                             key={i}
                             onClick={() => setBackgroundColor(gradient)}
-                            className="h-16 rounded-lg border-2 border-border hover:border-primary transition-all"
+                            className={`h-16 rounded-xl border-2 transition-all ${
+                              backgroundColor === gradient ? 'border-primary scale-105 ring-2 ring-primary/20' : 'border-border hover:border-primary/50'
+                            }`}
                             style={{ background: gradient }}
                           />
                         ))}
