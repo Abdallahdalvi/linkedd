@@ -21,6 +21,7 @@ import {
   Music2,
   Ghost,
   ShoppingBag,
+  Clock,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -1012,6 +1013,110 @@ function BlockRenderer({ block, theme, onClick }: { block: Block; theme: ThemeCo
             )}
           </div>
         </button>
+      );
+
+    case 'carousel':
+      interface CarouselItem {
+        id: string;
+        image_url: string;
+        title: string;
+        url: string;
+      }
+      const carouselContent = block.content as { items?: CarouselItem[] } | undefined;
+      const carouselItems = carouselContent?.items || [];
+      return (
+        <div className="w-full space-y-3">
+          {(block.title || block.subtitle) && (
+            <div className="text-center">
+              {block.title && <h3 className="font-semibold text-lg" style={{ color: theme.text }}>{block.title}</h3>}
+              {block.subtitle && <p className="text-sm opacity-60" style={{ color: theme.text }}>{block.subtitle}</p>}
+            </div>
+          )}
+          <div 
+            className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          >
+            {carouselItems.length > 0 ? carouselItems.map((item, idx) => (
+              <a 
+                key={item.id || idx}
+                href={item.url || '#'}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-shrink-0 w-36 snap-center overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 shadow-lg"
+                style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
+              >
+                {item.image_url ? (
+                  <img 
+                    src={item.image_url} 
+                    alt={item.title} 
+                    className="w-full h-24 object-cover"
+                  />
+                ) : (
+                  <div 
+                    className="w-full h-24 flex items-center justify-center"
+                    style={{ background: `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}10)` }}
+                  >
+                    <Globe className="w-8 h-8 opacity-40" style={{ color: theme.text }} />
+                  </div>
+                )}
+                {item.title && (
+                  <div className="p-3" style={{ color: theme.text }}>
+                    <p className="text-sm font-medium truncate">{item.title}</p>
+                  </div>
+                )}
+              </a>
+            )) : (
+              <div className="w-full text-center py-6 opacity-50" style={{ color: theme.text }}>
+                <p className="text-sm">No items in carousel</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'scheduled':
+      const scheduledContent = block.content as { message?: string } | undefined;
+      return (
+        <div 
+          className="w-full py-4 px-5 flex items-center gap-3"
+          style={pillStyle}
+        >
+          <div 
+            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${theme.accent}20` }}
+          >
+            <Clock className="w-5 h-5" style={{ color: theme.accent }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold leading-tight" style={{ color: theme.text }}>
+              {block.title || 'Scheduled Content'}
+            </h3>
+            {scheduledContent?.message && (
+              <p className="text-sm truncate opacity-60" style={{ color: theme.text }}>{scheduledContent.message}</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'html':
+      const htmlContent = block.content as { html?: string } | undefined;
+      return (
+        <div 
+          className="w-full overflow-hidden"
+          style={{ ...pillStyle, padding: 0 }}
+        >
+          {htmlContent?.html ? (
+            <div 
+              className="p-4"
+              dangerouslySetInnerHTML={{ __html: htmlContent.html }}
+              style={{ color: theme.text }}
+            />
+          ) : (
+            <div className="p-4 text-center opacity-50" style={{ color: theme.text }}>
+              <p className="text-sm">HTML content</p>
+            </div>
+          )}
+        </div>
       );
 
     default:
