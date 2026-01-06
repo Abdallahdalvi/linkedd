@@ -381,7 +381,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
       const textSize = textContent?.text_size || 'normal';
       return (
         <div 
-          className="w-full py-3 px-4"
+          className="w-[110%] -ml-[5%] py-3 px-4"
           style={{ ...pillStyle, textAlign }}
         >
           {block.title && (
@@ -402,7 +402,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'image':
       return (
         <div 
-          className="w-full overflow-hidden shadow-lg"
+          className="w-[110%] -ml-[5%] overflow-hidden shadow-lg"
           style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
         >
           {block.thumbnail_url && (
@@ -434,7 +434,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'featured':
       return (
         <div 
-          className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
+          className="w-[110%] -ml-[5%] transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
           style={{ 
             background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}dd)`, 
             color: '#ffffff',
@@ -460,7 +460,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'video':
       return (
         <div 
-          className="w-full overflow-hidden cursor-pointer shadow-lg"
+          className="w-[110%] -ml-[5%] overflow-hidden cursor-pointer shadow-lg"
           style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
         >
           <div className="relative aspect-video bg-black/10">
@@ -571,7 +571,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
       const carouselContent = block.content as { items?: CarouselItem[] } | undefined;
       const items = carouselContent?.items || [];
       return (
-        <div className="w-full space-y-2">
+        <div className="w-[110%] -ml-[5%] space-y-2">
           {(block.title || block.subtitle) && (
             <div className="text-center px-2">
               {block.title && <h3 className="text-sm font-semibold" style={{ color: theme.text }}>{block.title}</h3>}
@@ -672,7 +672,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'html':
       return (
         <div 
-          className="w-full py-4 px-4 rounded-2xl" 
+          className="w-[110%] -ml-[5%] py-4 px-4 rounded-2xl" 
           style={pillStyle}
         >
           <div className="text-center">
