@@ -60,6 +60,8 @@ interface CustomDomain {
   addedAt: string;
 }
 
+type CanonicalPreference = 'www' | 'non-www' | 'auto';
+
 interface DashboardSettingsPageProps {
   profile: any;
   onUpdateProfile: (updates: any) => Promise<void>;
@@ -93,6 +95,8 @@ export default function DashboardSettingsPage({
   const [domains, setDomains] = useState<CustomDomain[]>([]);
   const [addingDomain, setAddingDomain] = useState(false);
   const [domainStep, setDomainStep] = useState<'input' | 'dns' | 'verify'>('input');
+  const [canonicalPreference, setCanonicalPreference] = useState<CanonicalPreference>('non-www');
+  const [forceHttps, setForceHttps] = useState(true);
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -450,6 +454,119 @@ export default function DashboardSettingsPage({
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {/* Domain Redirect Settings */}
+                  {domains.length > 0 && (
+                    <div className="pt-4 mt-4 border-t border-border space-y-4">
+                      <h4 className="font-medium text-foreground text-sm">Redirect Settings</h4>
+                      
+                      {/* Canonical URL Preference */}
+                      <div className="space-y-2">
+                        <Label className="text-sm">Canonical URL</Label>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Choose which version of your domain should be the primary URL. The other will redirect.
+                        </p>
+                        <div className="flex flex-col gap-2">
+                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+                            <input
+                              type="radio"
+                              name="canonical"
+                              value="non-www"
+                              checked={canonicalPreference === 'non-www'}
+                              onChange={() => {
+                                setCanonicalPreference('non-www');
+                                toast.success('Canonical URL set to non-www');
+                              }}
+                              className="w-4 h-4 text-primary"
+                            />
+                            <div>
+                              <span className="font-mono text-sm">example.com</span>
+                              <span className="text-xs text-muted-foreground ml-2">(recommended)</span>
+                            </div>
+                          </label>
+                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+                            <input
+                              type="radio"
+                              name="canonical"
+                              value="www"
+                              checked={canonicalPreference === 'www'}
+                              onChange={() => {
+                                setCanonicalPreference('www');
+                                toast.success('Canonical URL set to www');
+                              }}
+                              className="w-4 h-4 text-primary"
+                            />
+                            <div>
+                              <span className="font-mono text-sm">www.example.com</span>
+                            </div>
+                          </label>
+                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+                            <input
+                              type="radio"
+                              name="canonical"
+                              value="auto"
+                              checked={canonicalPreference === 'auto'}
+                              onChange={() => {
+                                setCanonicalPreference('auto');
+                                toast.success('Canonical URL set to auto');
+                              }}
+                              className="w-4 h-4 text-primary"
+                            />
+                            <div>
+                              <span className="text-sm">Auto (no redirect)</span>
+                              <span className="text-xs text-muted-foreground ml-2">Both versions work independently</span>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* HTTPS Redirect */}
+                      <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
+                        <div>
+                          <Label className="text-sm">Force HTTPS</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Redirect all HTTP traffic to HTTPS
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={forceHttps}
+                          onCheckedChange={(checked) => {
+                            setForceHttps(checked);
+                            toast.success(checked ? 'HTTPS enforced' : 'HTTP allowed');
+                          }}
+                        />
+                      </div>
+
+                      {/* Preview */}
+                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <LinkIcon className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                          <div className="text-sm">
+                            <p className="font-medium text-foreground">Redirect Preview</p>
+                            <p className="text-muted-foreground text-xs mt-1">
+                              {canonicalPreference === 'non-www' && (
+                                <>
+                                  <span className="text-muted-foreground/70 line-through">www.{domains[0]?.domain}</span>
+                                  <span className="mx-2">→</span>
+                                  <span className="text-foreground">{forceHttps ? 'https://' : ''}{domains[0]?.domain}</span>
+                                </>
+                              )}
+                              {canonicalPreference === 'www' && (
+                                <>
+                                  <span className="text-muted-foreground/70 line-through">{domains[0]?.domain}</span>
+                                  <span className="mx-2">→</span>
+                                  <span className="text-foreground">{forceHttps ? 'https://' : ''}www.{domains[0]?.domain}</span>
+                                </>
+                              )}
+                              {canonicalPreference === 'auto' && (
+                                <>Both {domains[0]?.domain} and www.{domains[0]?.domain} serve independently</>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </div>
