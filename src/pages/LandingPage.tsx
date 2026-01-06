@@ -26,7 +26,7 @@ const features = [
 const testimonials = [
   { name: 'Sarah J.', role: 'Content Creator', quote: 'The best link-in-bio tool I\'ve ever used. Clean, fast, and powerful.' },
   { name: 'Mike C.', role: 'Entrepreneur', quote: 'Switched from Linktree and never looked back. The analytics are incredible.' },
-  { name: 'Emily D.', role: 'Influencer', quote: 'My click-through rate increased by 40% after switching to LinkBio.' },
+  { name: 'Emily D.', role: 'Influencer', quote: 'My click-through rate increased by 40% after switching to Links DC.' },
 ];
 
 export default function LandingPage() {
@@ -42,7 +42,7 @@ export default function LandingPage() {
               <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center">
                 <LinkIcon className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold text-xl">LinkBio</span>
+              <span className="font-display font-bold text-xl">Links DC</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-8">
@@ -229,7 +229,7 @@ export default function LandingPage() {
               Ready to Get Started?
             </h2>
             <p className="text-xl text-white/70 mb-8 max-w-2xl mx-auto">
-              Join thousands of creators who trust LinkBio for their link-in-bio needs
+              Join thousands of creators who trust Links DC for their link-in-bio needs
             </p>
             <Button size="lg" className="bg-white text-foreground hover:bg-white/90 text-lg px-8" asChild>
               <Link to="/auth">
@@ -249,10 +249,10 @@ export default function LandingPage() {
               <div className="w-8 h-8 rounded-xl gradient-primary flex items-center justify-center">
                 <LinkIcon className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-display font-bold">LinkBio</span>
+              <span className="font-display font-bold">Links DC</span>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2024 LinkBio. All rights reserved.
+              © 2024 Links DC. All rights reserved.
             </p>
           </div>
         </div>
