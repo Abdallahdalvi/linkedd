@@ -15,6 +15,14 @@ import {
   Star,
   Minus,
   MoreVertical,
+  Video,
+  Music,
+  Phone,
+  MessageCircle,
+  Mail,
+  Code,
+  Columns,
+  Clock,
 } from 'lucide-react';
 import { Block } from '@/hooks/useLinkProfile';
 import { Button } from '@/components/ui/button';
@@ -32,9 +40,18 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+
+// Block type specific editors
+import LinkBlockEditor from './editors/LinkBlockEditor';
+import CarouselBlockEditor from './editors/CarouselBlockEditor';
+import VideoBlockEditor from './editors/VideoBlockEditor';
+import MusicBlockEditor from './editors/MusicBlockEditor';
+import ContactBlockEditor from './editors/ContactBlockEditor';
+import TextBlockEditor from './editors/TextBlockEditor';
+import ImageBlockEditor from './editors/ImageBlockEditor';
+import ScheduledBlockEditor from './editors/ScheduledBlockEditor';
+import HtmlBlockEditor from './editors/HtmlBlockEditor';
+import FeaturedBlockEditor from './editors/FeaturedBlockEditor';
 
 interface SortableBlockProps {
   block: Block;
@@ -49,6 +66,14 @@ const blockTypeIcons: Record<string, typeof LinkIcon> = {
   image: Image,
   featured: Star,
   divider: Minus,
+  video: Video,
+  music: Music,
+  contact_call: Phone,
+  contact_whatsapp: MessageCircle,
+  contact_email: Mail,
+  html: Code,
+  carousel: Columns,
+  scheduled: Clock,
 };
 
 const blockTypeLabels: Record<string, string> = {
@@ -58,16 +83,18 @@ const blockTypeLabels: Record<string, string> = {
   image: 'Image',
   featured: 'Featured Card',
   divider: 'Divider',
+  video: 'Video Embed',
+  music: 'Music Embed',
+  contact_call: 'Call Button',
+  contact_whatsapp: 'WhatsApp',
+  contact_email: 'Email',
+  html: 'Custom HTML',
+  carousel: 'Carousel',
+  scheduled: 'Scheduled',
 };
 
 export default function SortableBlock({ block, onUpdate, onDelete }: SortableBlockProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({
-    title: block.title || '',
-    subtitle: block.subtitle || '',
-    url: block.url || '',
-    thumbnail_url: block.thumbnail_url || '',
-  });
 
   const {
     attributes,
@@ -85,9 +112,45 @@ export default function SortableBlock({ block, onUpdate, onDelete }: SortableBlo
 
   const Icon = blockTypeIcons[block.type] || LinkIcon;
 
-  const handleSave = () => {
-    onUpdate(editForm);
+  const handleSave = (updates: Partial<Block>) => {
+    onUpdate(updates);
     setIsEditing(false);
+  };
+
+  const renderEditor = () => {
+    const commonProps = {
+      block,
+      onSave: handleSave,
+      onCancel: () => setIsEditing(false),
+    };
+
+    switch (block.type) {
+      case 'link':
+      case 'cta':
+        return <LinkBlockEditor {...commonProps} />;
+      case 'carousel':
+        return <CarouselBlockEditor {...commonProps} />;
+      case 'video':
+        return <VideoBlockEditor {...commonProps} />;
+      case 'music':
+        return <MusicBlockEditor {...commonProps} />;
+      case 'contact_call':
+      case 'contact_whatsapp':
+      case 'contact_email':
+        return <ContactBlockEditor contactType={block.type} {...commonProps} />;
+      case 'text':
+        return <TextBlockEditor {...commonProps} />;
+      case 'image':
+        return <ImageBlockEditor {...commonProps} />;
+      case 'scheduled':
+        return <ScheduledBlockEditor {...commonProps} />;
+      case 'html':
+        return <HtmlBlockEditor {...commonProps} />;
+      case 'featured':
+        return <FeaturedBlockEditor {...commonProps} />;
+      default:
+        return <LinkBlockEditor {...commonProps} />;
+    }
   };
 
   return (
@@ -191,57 +254,12 @@ export default function SortableBlock({ block, onUpdate, onDelete }: SortableBlo
 
       {/* Edit Dialog */}
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
-            <DialogTitle>Edit Block</DialogTitle>
+            <DialogTitle>Edit {blockTypeLabels[block.type] || 'Block'}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={editForm.title}
-                onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                placeholder="Enter title"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="subtitle">Subtitle (optional)</Label>
-              <Input
-                id="subtitle"
-                value={editForm.subtitle}
-                onChange={(e) => setEditForm({ ...editForm, subtitle: e.target.value })}
-                placeholder="Enter subtitle"
-              />
-            </div>
-            {(block.type === 'link' || block.type === 'cta') && (
-              <div className="space-y-2">
-                <Label htmlFor="url">URL</Label>
-                <Input
-                  id="url"
-                  value={editForm.url}
-                  onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
-                  placeholder="https://..."
-                />
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label htmlFor="thumbnail">Thumbnail URL (optional)</Label>
-              <Input
-                id="thumbnail"
-                value={editForm.thumbnail_url}
-                onChange={(e) => setEditForm({ ...editForm, thumbnail_url: e.target.value })}
-                placeholder="https://..."
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditing(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave}>
-              Save Changes
-            </Button>
+          <div className="overflow-y-auto flex-1 pr-1 py-2">
+            {renderEditor()}
           </div>
         </DialogContent>
       </Dialog>

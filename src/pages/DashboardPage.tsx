@@ -101,6 +101,7 @@ export default function DashboardPage() {
               onAddBlock={addBlock}
               onUpdateBlock={updateBlock}
               onDeleteBlock={deleteBlock}
+              onReorderBlocks={reorderBlocks}
             />
           } 
         />

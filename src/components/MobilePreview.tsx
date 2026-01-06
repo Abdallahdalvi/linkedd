@@ -1,8 +1,25 @@
 import { motion } from 'framer-motion';
 import { Block, LinkProfile } from '@/hooks/useLinkProfile';
-import { ExternalLink, MapPin, Instagram, Youtube, Linkedin, Twitter, MessageCircle, Mail, Globe } from 'lucide-react';
+import { 
+  ExternalLink, 
+  MapPin, 
+  Instagram, 
+  Youtube, 
+  Linkedin, 
+  Twitter, 
+  MessageCircle, 
+  Mail, 
+  Globe,
+  Phone,
+  Play,
+  Music,
+  ChevronLeft,
+  ChevronRight,
+  Clock
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { useRef } from 'react';
 
 interface MobilePreviewProps {
   profile: LinkProfile | null;
@@ -180,11 +197,27 @@ interface ThemeColors {
   cardBg: string;
 }
 
+interface CarouselItem {
+  id: string;
+  image_url: string;
+  title: string;
+  url: string;
+}
+
 function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+
   const cardStyle = {
     backgroundColor: theme.cardBg,
     borderColor: `${theme.text}10`,
     color: theme.text,
+  };
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    if (carouselRef.current) {
+      const scrollAmount = direction === 'left' ? -120 : 120;
+      carouselRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
   };
 
   switch (block.type) {
@@ -192,7 +225,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'cta':
       return (
         <div 
-          className="w-full p-3 rounded-xl border transition-all hover:scale-[1.02] hover:shadow-md flex items-center gap-3"
+          className="w-full p-3 rounded-xl border transition-all hover:scale-[1.02] hover:shadow-md flex items-center gap-3 cursor-pointer"
           style={cardStyle}
         >
           {block.thumbnail_url && (
@@ -215,9 +248,45 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
       );
 
     case 'text':
+      const textContent = block.content as { text_size?: string; text_align?: string } | undefined;
+      const textAlign = (textContent?.text_align || 'center') as 'left' | 'center' | 'right';
+      const textSize = textContent?.text_size || 'normal';
       return (
-        <div className="w-full p-3 rounded-xl border" style={cardStyle}>
-          <p className="text-sm">{block.title}</p>
+        <div 
+          className="w-full p-3 rounded-xl"
+          style={{ ...cardStyle, textAlign }}
+        >
+          {block.title && (
+            <h3 className={`font-semibold ${
+              textSize === 'small' ? 'text-xs' : textSize === 'large' ? 'text-base' : 'text-sm'
+            }`}>
+              {block.title}
+            </h3>
+          )}
+          <p className={`opacity-80 ${
+            textSize === 'small' ? 'text-[10px]' : textSize === 'large' ? 'text-sm' : 'text-xs'
+          }`}>
+            {block.subtitle}
+          </p>
+        </div>
+      );
+
+    case 'image':
+      return (
+        <div className="w-full rounded-xl overflow-hidden border" style={{ borderColor: `${theme.text}10` }}>
+          {block.thumbnail_url && (
+            <img 
+              src={block.thumbnail_url} 
+              alt={block.title || ''} 
+              className="w-full object-cover"
+            />
+          )}
+          {(block.title || block.subtitle) && (
+            <div className="p-2" style={cardStyle}>
+              {block.title && <p className="text-xs font-medium">{block.title}</p>}
+              {block.subtitle && <p className="text-[10px] opacity-70">{block.subtitle}</p>}
+            </div>
+          )}
         </div>
       );
 
@@ -231,13 +300,227 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'featured':
       return (
         <div 
-          className="w-full p-4 rounded-xl transition-all hover:scale-[1.02] hover:shadow-md"
+          className="w-full rounded-xl transition-all hover:scale-[1.02] hover:shadow-md overflow-hidden cursor-pointer"
           style={{ backgroundColor: theme.accent, color: theme.cardBg }}
         >
-          <h3 className="text-sm font-bold">{block.title || 'Featured'}</h3>
-          {block.subtitle && (
-            <p className="text-xs opacity-90 mt-1">{block.subtitle}</p>
+          {block.thumbnail_url && (
+            <img 
+              src={block.thumbnail_url} 
+              alt="" 
+              className="w-full h-20 object-cover"
+            />
           )}
+          <div className="p-3">
+            <h3 className="text-sm font-bold">{block.title || 'Featured'}</h3>
+            {block.subtitle && (
+              <p className="text-xs opacity-90 mt-0.5">{block.subtitle}</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'video':
+      return (
+        <div 
+          className="w-full rounded-xl border overflow-hidden cursor-pointer"
+          style={cardStyle}
+        >
+          <div className="relative aspect-video bg-black/10">
+            {block.thumbnail_url ? (
+              <>
+                <img 
+                  src={block.thumbnail_url} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                  <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center">
+                    <Play className="w-5 h-5 text-black ml-0.5" />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Play className="w-8 h-8 opacity-50" />
+              </div>
+            )}
+          </div>
+          <div className="p-2">
+            <h3 className="text-xs font-medium truncate">{block.title || 'Video'}</h3>
+            {block.subtitle && (
+              <p className="text-[10px] opacity-70 truncate">{block.subtitle}</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'music':
+      return (
+        <div 
+          className="w-full p-3 rounded-xl border flex items-center gap-3 cursor-pointer"
+          style={cardStyle}
+        >
+          <div 
+            className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
+            style={{ backgroundColor: `${theme.accent}20` }}
+          >
+            {block.thumbnail_url ? (
+              <img src={block.thumbnail_url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <Music className="w-6 h-6" style={{ color: theme.accent }} />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium truncate">{block.title || 'Track'}</h3>
+            {block.subtitle && (
+              <p className="text-xs truncate opacity-70">{block.subtitle}</p>
+            )}
+          </div>
+          <Play className="w-4 h-4 flex-shrink-0" style={{ color: theme.accent }} />
+        </div>
+      );
+
+    case 'contact_call':
+    case 'contact_whatsapp':
+    case 'contact_email':
+      const contactIcons = {
+        contact_call: Phone,
+        contact_whatsapp: MessageCircle,
+        contact_email: Mail,
+      };
+      const ContactIcon = contactIcons[block.type];
+      const contactColors = {
+        contact_call: '#22c55e',
+        contact_whatsapp: '#25D366',
+        contact_email: theme.accent,
+      };
+      return (
+        <div 
+          className="w-full p-3 rounded-xl flex items-center gap-3 cursor-pointer transition-all hover:scale-[1.02]"
+          style={{ backgroundColor: contactColors[block.type], color: '#ffffff' }}
+        >
+          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+            <ContactIcon className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium truncate">{block.title}</h3>
+            {block.subtitle && (
+              <p className="text-xs truncate opacity-90">{block.subtitle}</p>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'carousel':
+      const carouselContent = block.content as { items?: CarouselItem[] } | undefined;
+      const items = carouselContent?.items || [];
+      return (
+        <div className="w-full space-y-2">
+          {(block.title || block.subtitle) && (
+            <div className="text-center">
+              {block.title && <h3 className="text-sm font-medium" style={{ color: theme.text }}>{block.title}</h3>}
+              {block.subtitle && <p className="text-xs opacity-70" style={{ color: theme.text }}>{block.subtitle}</p>}
+            </div>
+          )}
+          <div className="relative group">
+            <div 
+              ref={carouselRef}
+              className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 snap-x snap-mandatory"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              {items.length > 0 ? items.map((item, idx) => (
+                <div 
+                  key={item.id || idx}
+                  className="flex-shrink-0 w-24 snap-center rounded-lg overflow-hidden border cursor-pointer transition-transform hover:scale-105"
+                  style={{ borderColor: `${theme.text}10` }}
+                >
+                  {item.image_url ? (
+                    <img 
+                      src={item.image_url} 
+                      alt={item.title} 
+                      className="w-full h-16 object-cover"
+                    />
+                  ) : (
+                    <div 
+                      className="w-full h-16 flex items-center justify-center"
+                      style={{ backgroundColor: `${theme.accent}10` }}
+                    >
+                      <Globe className="w-6 h-6 opacity-50" />
+                    </div>
+                  )}
+                  {item.title && (
+                    <div className="p-1.5" style={cardStyle}>
+                      <p className="text-[10px] font-medium truncate">{item.title}</p>
+                    </div>
+                  )}
+                </div>
+              )) : (
+                Array.from({ length: 3 }).map((_, idx) => (
+                  <div 
+                    key={idx}
+                    className="flex-shrink-0 w-24 snap-center rounded-lg overflow-hidden border"
+                    style={{ borderColor: `${theme.text}10`, backgroundColor: `${theme.accent}10` }}
+                  >
+                    <div className="w-full h-16 flex items-center justify-center">
+                      <Globe className="w-6 h-6 opacity-30" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            {items.length > 2 && (
+              <>
+                <button 
+                  onClick={() => scrollCarousel('left')}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => scrollCarousel('right')}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-white/80 shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      );
+
+    case 'scheduled':
+      return (
+        <div 
+          className="w-full p-3 rounded-xl border transition-all hover:scale-[1.02] flex items-center gap-3 cursor-pointer"
+          style={cardStyle}
+        >
+          {block.thumbnail_url && (
+            <img 
+              src={block.thumbnail_url} 
+              alt="" 
+              className="w-10 h-10 rounded-lg object-cover"
+            />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1">
+              <Clock className="w-3 h-3" style={{ color: theme.accent }} />
+              <h3 className="text-sm font-medium truncate">{block.title}</h3>
+            </div>
+            {block.subtitle && (
+              <p className="text-xs truncate opacity-70">{block.subtitle}</p>
+            )}
+          </div>
+          <ExternalLink className="w-4 h-4 opacity-50 flex-shrink-0" />
+        </div>
+      );
+
+    case 'html':
+      return (
+        <div className="w-full p-3 rounded-xl border" style={cardStyle}>
+          <div className="text-center">
+            <p className="text-xs opacity-50">[Custom Embed]</p>
+            <p className="text-[10px] opacity-40">{block.title}</p>
+          </div>
         </div>
       );
 
