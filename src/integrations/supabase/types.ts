@@ -93,6 +93,13 @@ export type Database = {
             referencedRelation: "link_profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "analytics_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_link_profiles"
+            referencedColumns: ["id"]
+          },
         ]
       }
       audit_logs: {
@@ -204,6 +211,13 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "link_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "public_link_profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -348,7 +362,81 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_link_profiles: {
+        Row: {
+          avatar_url: string | null
+          background_type: string | null
+          background_value: string | null
+          bio: string | null
+          cover_url: string | null
+          created_at: string | null
+          custom_colors: Json | null
+          custom_fonts: Json | null
+          display_name: string | null
+          id: string | null
+          is_password_protected: boolean | null
+          is_public: boolean | null
+          location: string | null
+          og_image_url: string | null
+          seo_description: string | null
+          seo_title: string | null
+          social_links: Json | null
+          theme_preset: string | null
+          total_views: number | null
+          updated_at: string | null
+          user_id: string | null
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          background_type?: string | null
+          background_value?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          custom_colors?: Json | null
+          custom_fonts?: Json | null
+          display_name?: string | null
+          id?: string | null
+          is_password_protected?: boolean | null
+          is_public?: boolean | null
+          location?: string | null
+          og_image_url?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          social_links?: Json | null
+          theme_preset?: string | null
+          total_views?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          background_type?: string | null
+          background_value?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          custom_colors?: Json | null
+          custom_fonts?: Json | null
+          display_name?: string | null
+          id?: string | null
+          is_password_protected?: boolean | null
+          is_public?: boolean | null
+          location?: string | null
+          og_image_url?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          social_links?: Json | null
+          theme_preset?: string | null
+          total_views?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          username?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
