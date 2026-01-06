@@ -412,15 +412,6 @@ export default function PublicProfilePage() {
               ))}
             </div>
 
-            {/* Footer */}
-            <div className="mt-16 text-center">
-              <a 
-                href="/"
-                className="text-sm text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors font-medium tracking-wide uppercase text-xs"
-              >
-                Powered by LinkBio
-              </a>
-            </div>
           </motion.div>
         </div>
       </div>

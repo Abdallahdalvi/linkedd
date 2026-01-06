@@ -235,15 +235,6 @@ export default function MobilePreview({
                 ))}
               </div>
 
-              {/* Footer */}
-              <div className="mt-8 text-center">
-                <p 
-                  className="text-[10px] font-medium opacity-40 tracking-wide uppercase" 
-                  style={{ color: theme.text }}
-                >
-                  Powered by LinkBio
-                </p>
-              </div>
             </motion.div>
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-center p-4">
