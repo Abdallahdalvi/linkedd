@@ -408,7 +408,7 @@ export default function DashboardSettingsPage({
                   <Label>Your Link</Label>
                   <div className="flex items-center gap-2 mt-2">
                     <div className="flex-1 p-3 bg-secondary rounded-lg font-mono text-sm">
-                      linkbio.app/{profile?.username}
+                      {window.location.host}/{profile?.username}
                     </div>
                     <Button variant="outline" size="icon" onClick={copyProfileUrl}>
                       <Copy className="w-4 h-4" />
