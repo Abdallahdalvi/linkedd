@@ -63,17 +63,27 @@ const socialColors: Record<string, string> = {
 };
 
 // Default theme for fallback
-const defaultTheme = { bg: '#ffffff', text: '#1a1a1a', accent: '#1a1a1a', cardBg: 'rgba(255,255,255,0.95)', gradient: false };
+const defaultTheme = { 
+  bg: '#ffffff', 
+  text: '#1a1a1a', 
+  accent: '#1a1a1a', 
+  cardBg: 'rgba(255,255,255,0.95)', 
+  gradient: false,
+  buttonRadius: 16,
+  buttonStyle: 'filled',
+};
 
 const getThemeColors = (profile: LinkProfile | null) => {
   if (!profile?.custom_colors) return defaultTheme;
-  const colors = profile.custom_colors as Record<string, string | boolean>;
+  const colors = profile.custom_colors as Record<string, string | boolean | number>;
   return {
     bg: (colors.bg as string) || defaultTheme.bg,
     text: (colors.text as string) || defaultTheme.text,
     accent: (colors.accent as string) || defaultTheme.accent,
     cardBg: (colors.cardBg as string) || defaultTheme.cardBg,
     gradient: Boolean(colors.gradient),
+    buttonRadius: (colors.buttonRadius as number) || defaultTheme.buttonRadius,
+    buttonStyle: (colors.buttonStyle as string) || defaultTheme.buttonStyle,
   };
 };
 
@@ -259,6 +269,8 @@ interface ThemeColors {
   accent: string;
   cardBg: string;
   gradient?: boolean;
+  buttonRadius?: number;
+  buttonStyle?: string;
 }
 
 interface CarouselItem {
@@ -270,16 +282,55 @@ interface CarouselItem {
 
 function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
   const carouselRef = useRef<HTMLDivElement>(null);
+  
+  const buttonRadius = theme.buttonRadius || 16;
+  const buttonStyle = theme.buttonStyle || 'filled';
 
-  // Pill-shaped button style like Linktree
-  const pillStyle = {
-    backgroundColor: theme.cardBg,
-    backdropFilter: 'blur(12px)',
-    color: theme.text,
-    boxShadow: theme.gradient 
-      ? '0 4px 20px -4px rgba(0,0,0,0.15)' 
-      : '0 2px 8px -2px rgba(0,0,0,0.08)',
+  // Get button style based on selected style
+  const getButtonStyle = () => {
+    const baseStyle = {
+      color: theme.text,
+      borderRadius: `${buttonRadius}px`,
+    };
+
+    switch (buttonStyle) {
+      case 'outline':
+        return {
+          ...baseStyle,
+          backgroundColor: 'transparent',
+          border: `2px solid ${theme.text}`,
+          boxShadow: 'none',
+        };
+      case 'soft-shadow':
+        return {
+          ...baseStyle,
+          backgroundColor: theme.cardBg,
+          border: 'none',
+          boxShadow: '0 8px 30px -6px rgba(0,0,0,0.15), 0 4px 10px -4px rgba(0,0,0,0.1)',
+        };
+      case 'glass':
+        return {
+          ...baseStyle,
+          backgroundColor: 'rgba(255,255,255,0.15)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.25)',
+          boxShadow: '0 4px 20px -4px rgba(0,0,0,0.1)',
+        };
+      case 'filled':
+      default:
+        return {
+          ...baseStyle,
+          backgroundColor: theme.cardBg,
+          backdropFilter: 'blur(12px)',
+          boxShadow: theme.gradient 
+            ? '0 4px 20px -4px rgba(0,0,0,0.15)' 
+            : '0 2px 8px -2px rgba(0,0,0,0.08)',
+        };
+    }
   };
+
+  const pillStyle = getButtonStyle();
 
   const scrollCarousel = (direction: 'left' | 'right') => {
     if (carouselRef.current) {
@@ -293,7 +344,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'cta':
       return (
         <div 
-          className="w-full py-3.5 px-4 rounded-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 cursor-pointer group"
+          className="w-full py-3.5 px-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] flex items-center gap-3 cursor-pointer group"
           style={pillStyle}
         >
           {block.thumbnail_url ? (
@@ -330,7 +381,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
       const textSize = textContent?.text_size || 'normal';
       return (
         <div 
-          className="w-full py-3 px-4 rounded-2xl"
+          className="w-full py-3 px-4"
           style={{ ...pillStyle, textAlign }}
         >
           {block.title && (
@@ -351,8 +402,8 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'image':
       return (
         <div 
-          className="w-full rounded-2xl overflow-hidden shadow-lg"
-          style={{ backgroundColor: theme.cardBg }}
+          className="w-full overflow-hidden shadow-lg"
+          style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
         >
           {block.thumbnail_url && (
             <img 
@@ -383,10 +434,11 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'featured':
       return (
         <div 
-          className="w-full rounded-2xl transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
+          className="w-full transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] overflow-hidden cursor-pointer shadow-lg"
           style={{ 
             background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent}dd)`, 
-            color: '#ffffff' 
+            color: '#ffffff',
+            borderRadius: `${buttonRadius}px`,
           }}
         >
           {block.thumbnail_url && (
@@ -408,8 +460,8 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'video':
       return (
         <div 
-          className="w-full rounded-2xl overflow-hidden cursor-pointer shadow-lg"
-          style={{ backgroundColor: theme.cardBg }}
+          className="w-full overflow-hidden cursor-pointer shadow-lg"
+          style={{ backgroundColor: theme.cardBg, borderRadius: `${buttonRadius}px` }}
         >
           <div className="relative aspect-video bg-black/10">
             {block.thumbnail_url ? (
@@ -446,7 +498,7 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
     case 'music':
       return (
         <div 
-          className="w-full py-3 px-4 rounded-full flex items-center gap-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full py-3 px-4 flex items-center gap-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
           style={pillStyle}
         >
           <div 
@@ -490,8 +542,8 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
       };
       return (
         <div 
-          className="w-full py-3 px-4 rounded-full flex items-center gap-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
-          style={{ background: contactColors[block.type], color: '#ffffff' }}
+          className="w-full py-3 px-4 flex items-center gap-3 cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-lg"
+          style={{ background: contactColors[block.type], color: '#ffffff', borderRadius: `${buttonRadius}px` }}
         >
           <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
             <ContactIcon className="w-5 h-5" />
@@ -526,8 +578,8 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
               {items.length > 0 ? items.map((item, idx) => (
                 <div 
                   key={item.id || idx}
-                  className="flex-shrink-0 w-28 snap-center rounded-xl overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 shadow-md"
-                  style={{ backgroundColor: theme.cardBg }}
+                  className="flex-shrink-0 w-28 snap-center overflow-hidden cursor-pointer transition-all duration-200 hover:scale-105 shadow-md"
+                  style={{ backgroundColor: theme.cardBg, borderRadius: `${Math.min(buttonRadius, 16)}px` }}
                 >
                   {item.image_url ? (
                     <img 
