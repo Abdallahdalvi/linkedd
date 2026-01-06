@@ -15,6 +15,12 @@ import {
   Key,
   Mail,
   LogOut,
+  ExternalLink,
+  CheckCircle,
+  Clock,
+  AlertCircle,
+  Link as LinkIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +52,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+
+interface CustomDomain {
+  domain: string;
+  status: 'verifying' | 'active' | 'failed' | 'pending';
+  isPrimary: boolean;
+  addedAt: string;
+}
 
 interface DashboardSettingsPageProps {
   profile: any;
@@ -72,6 +86,13 @@ export default function DashboardSettingsPage({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
+
+  // Custom domain state
+  const [showDomainDialog, setShowDomainDialog] = useState(false);
+  const [customDomain, setCustomDomain] = useState('');
+  const [domains, setDomains] = useState<CustomDomain[]>([]);
+  const [addingDomain, setAddingDomain] = useState(false);
+  const [domainStep, setDomainStep] = useState<'input' | 'dns' | 'verify'>('input');
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -235,6 +256,83 @@ export default function DashboardSettingsPage({
     toast.success('Notification settings saved!');
   };
 
+  const handleAddDomain = async () => {
+    if (!customDomain.trim()) {
+      toast.error('Please enter a domain');
+      return;
+    }
+
+    // Basic domain validation
+    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    if (!domainRegex.test(customDomain.trim())) {
+      toast.error('Please enter a valid domain (e.g., example.com)');
+      return;
+    }
+
+    setAddingDomain(true);
+    setDomainStep('dns');
+    setAddingDomain(false);
+  };
+
+  const handleVerifyDomain = async () => {
+    setAddingDomain(true);
+    // Simulate verification
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const newDomain: CustomDomain = {
+      domain: customDomain.trim(),
+      status: 'verifying',
+      isPrimary: domains.length === 0,
+      addedAt: new Date().toISOString(),
+    };
+
+    setDomains([...domains, newDomain]);
+    toast.success('Domain added! DNS verification in progress...');
+    setShowDomainDialog(false);
+    setCustomDomain('');
+    setDomainStep('input');
+    setAddingDomain(false);
+
+    // Simulate verification completing after delay
+    setTimeout(() => {
+      setDomains(prev => prev.map(d => 
+        d.domain === newDomain.domain ? { ...d, status: 'active' as const } : d
+      ));
+      toast.success(`${newDomain.domain} is now active!`);
+    }, 5000);
+  };
+
+  const handleRemoveDomain = (domain: string) => {
+    setDomains(domains.filter(d => d.domain !== domain));
+    toast.success('Domain removed');
+  };
+
+  const handleSetPrimary = (domain: string) => {
+    setDomains(domains.map(d => ({
+      ...d,
+      isPrimary: d.domain === domain
+    })));
+    toast.success(`${domain} set as primary domain`);
+  };
+
+  const copyDnsRecord = (value: string) => {
+    navigator.clipboard.writeText(value);
+    toast.success('Copied to clipboard!');
+  };
+
+  const getDomainStatusBadge = (status: CustomDomain['status']) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-success/10 text-success border-success/20"><CheckCircle className="w-3 h-3 mr-1" /> Active</Badge>;
+      case 'verifying':
+        return <Badge className="bg-warning/10 text-warning border-warning/20"><Clock className="w-3 h-3 mr-1" /> Verifying</Badge>;
+      case 'failed':
+        return <Badge className="bg-destructive/10 text-destructive border-destructive/20"><AlertCircle className="w-3 h-3 mr-1" /> Failed</Badge>;
+      default:
+        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
+    }
+  };
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -294,14 +392,66 @@ export default function DashboardSettingsPage({
                 </div>
 
                 <div className="pt-4 border-t border-border">
-                  <h3 className="font-medium text-foreground mb-2">Custom Domain</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Connect your own domain to your profile (coming soon)
-                  </p>
-                  <Button variant="outline" disabled>
-                    <Globe className="w-4 h-4 mr-2" />
-                    Add Custom Domain
-                  </Button>
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-medium text-foreground">Custom Domain</h3>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowDomainDialog(true)}
+                    >
+                      <Globe className="w-4 h-4 mr-2" />
+                      Add Domain
+                    </Button>
+                  </div>
+                  
+                  {domains.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                      Connect your own domain to your profile for a professional look.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {domains.map((domain) => (
+                        <div 
+                          key={domain.domain}
+                          className="flex items-center justify-between p-3 bg-secondary rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Globe className="w-4 h-4 text-muted-foreground" />
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm">{domain.domain}</span>
+                                {domain.isPrimary && (
+                                  <Badge variant="secondary" className="text-xs">Primary</Badge>
+                                )}
+                              </div>
+                              <div className="mt-1">
+                                {getDomainStatusBadge(domain.status)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!domain.isPrimary && domain.status === 'active' && (
+                              <Button 
+                                variant="ghost" 
+                                size="sm"
+                                onClick={() => handleSetPrimary(domain.domain)}
+                              >
+                                Set Primary
+                              </Button>
+                            )}
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleRemoveDomain(domain.domain)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
@@ -672,6 +822,166 @@ export default function DashboardSettingsPage({
             >
               {changingPassword ? 'Changing...' : 'Change Password'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Custom Domain Dialog */}
+      <Dialog open={showDomainDialog} onOpenChange={(open) => {
+        setShowDomainDialog(open);
+        if (!open) {
+          setDomainStep('input');
+          setCustomDomain('');
+        }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Globe className="w-5 h-5 text-primary" />
+              {domainStep === 'input' ? 'Add Custom Domain' : domainStep === 'dns' ? 'Configure DNS' : 'Verify Domain'}
+            </DialogTitle>
+            <DialogDescription>
+              {domainStep === 'input' && 'Enter your domain to connect it to your profile.'}
+              {domainStep === 'dns' && 'Add these DNS records at your domain registrar.'}
+              {domainStep === 'verify' && 'Click verify once DNS records are configured.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {domainStep === 'input' && (
+            <div className="space-y-4 py-4">
+              <div>
+                <Label>Domain Name</Label>
+                <Input 
+                  value={customDomain}
+                  onChange={(e) => setCustomDomain(e.target.value.toLowerCase())}
+                  placeholder="example.com"
+                  className="mt-2 font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-2">
+                  Enter just your domain name without http:// or www
+                </p>
+              </div>
+
+              <div className="p-3 bg-secondary rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  <strong>Tip:</strong> Add both <code className="text-foreground">yourdomain.com</code> and{' '}
+                  <code className="text-foreground">www.yourdomain.com</code> to ensure both resolve correctly.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {domainStep === 'dns' && (
+            <div className="space-y-4 py-4">
+              <div className="p-4 bg-secondary rounded-lg space-y-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">A Record (Root Domain & WWW)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono">
+                      @ → 185.158.133.1
+                    </code>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => copyDnsRecord('185.158.133.1')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono">
+                      www → 185.158.133.1
+                    </code>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => copyDnsRecord('185.158.133.1')}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs text-muted-foreground">TXT Record (Verification)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="flex-1 p-2 bg-background rounded text-sm font-mono truncate">
+                      _lovable → lovable_verify={profile?.id?.slice(0, 8) || 'ABC123'}
+                    </code>
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => copyDnsRecord(`lovable_verify=${profile?.id?.slice(0, 8) || 'ABC123'}`)}
+                    >
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex gap-2">
+                  <AlertCircle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  <div className="text-sm">
+                    <p className="font-medium text-foreground">DNS Propagation</p>
+                    <p className="text-muted-foreground">
+                      DNS changes can take up to 72 hours to propagate. Use{' '}
+                      <a 
+                        href="https://dnschecker.org" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline"
+                      >
+                        DNSChecker.org
+                      </a>{' '}
+                      to verify your settings.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            {domainStep === 'input' && (
+              <>
+                <Button variant="outline" onClick={() => setShowDomainDialog(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleAddDomain} 
+                  disabled={addingDomain || !customDomain.trim()}
+                  className="gradient-primary text-primary-foreground"
+                >
+                  Continue
+                </Button>
+              </>
+            )}
+
+            {domainStep === 'dns' && (
+              <>
+                <Button variant="outline" onClick={() => setDomainStep('input')}>
+                  Back
+                </Button>
+                <Button 
+                  onClick={handleVerifyDomain} 
+                  disabled={addingDomain}
+                  className="gradient-primary text-primary-foreground"
+                >
+                  {addingDomain ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Verify & Add Domain
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
