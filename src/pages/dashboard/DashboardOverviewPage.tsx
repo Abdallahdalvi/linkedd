@@ -6,7 +6,6 @@ import {
   Link as LinkIcon,
   Copy,
   ExternalLink,
-  ArrowUpRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -41,10 +40,10 @@ export default function DashboardOverviewPage({
   };
 
   const stats = [
-    { label: 'Profile Views', value: profile?.total_views || 0, icon: Eye, change: '+12%' },
-    { label: 'Link Clicks', value: blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0), icon: MousePointerClick, change: '+8%' },
-    { label: 'Click Rate', value: profile?.total_views ? `${((blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0) / profile.total_views) * 100).toFixed(1)}%` : '0%', icon: TrendingUp, change: '+5%' },
-    { label: 'Active Links', value: blocks.filter(b => b.is_enabled).length, icon: LinkIcon, change: '' },
+    { label: 'Profile Views', value: profile?.total_views || 0, icon: Eye },
+    { label: 'Link Clicks', value: blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0), icon: MousePointerClick },
+    { label: 'Click Rate', value: profile?.total_views ? `${((blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0) / profile.total_views) * 100).toFixed(1)}%` : '0%', icon: TrendingUp },
+    { label: 'Active Links', value: blocks.filter(b => b.is_enabled).length, icon: LinkIcon },
   ];
 
   return (
@@ -92,12 +91,6 @@ export default function DashboardOverviewPage({
               <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
                 <stat.icon className="w-5 h-5 text-primary" />
               </div>
-              {stat.change && (
-                <span className="flex items-center gap-1 text-xs text-success">
-                  <ArrowUpRight className="w-3 h-3" />
-                  {stat.change}
-                </span>
-              )}
             </div>
             <p className="text-2xl font-bold text-foreground">{stat.value}</p>
             <p className="text-sm text-muted-foreground">{stat.label}</p>
