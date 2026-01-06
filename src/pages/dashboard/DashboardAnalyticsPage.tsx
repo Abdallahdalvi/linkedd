@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -15,6 +16,7 @@ import {
   Link as LinkIcon,
   ShoppingBag,
   DollarSign,
+  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,7 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { useAnalytics } from '@/hooks/useAnalytics';
+import { useAnalytics, DateRange } from '@/hooks/useAnalytics';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DashboardAnalyticsPageProps {
@@ -55,7 +57,8 @@ const deviceColors: Record<string, string> = {
 };
 
 export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAnalyticsPageProps) {
-  const { countryData, deviceData, referrerData, uniqueVisitors, loading: analyticsLoading } = useAnalytics(profile?.id);
+  const [dateRange, setDateRange] = useState<DateRange>('30d');
+  const { countryData, deviceData, referrerData, uniqueVisitors, loading: analyticsLoading, refetch } = useAnalytics(profile?.id, dateRange);
   
   const totalViews = profile?.total_views || 0;
   const totalClicks = blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0);
@@ -72,6 +75,10 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
     .sort((a, b) => (b.total_clicks || 0) - (a.total_clicks || 0))
     .slice(0, 5);
 
+  const handleDateRangeChange = (value: string) => {
+    setDateRange(value as DateRange);
+  };
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -83,11 +90,15 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
           </h1>
           <p className="text-muted-foreground mt-1">
             Track your profile performance and engagement
+            <span className="inline-flex items-center ml-2 text-xs text-primary">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse mr-1" />
+              Live
+            </span>
           </p>
         </div>
         
         <div className="flex items-center gap-3">
-          <Select defaultValue="30d">
+          <Select value={dateRange} onValueChange={handleDateRangeChange}>
             <SelectTrigger className="w-[160px]">
               <Calendar className="w-4 h-4 mr-2" />
               <SelectValue />
@@ -97,8 +108,12 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
               <SelectItem value="30d">Last 30 days</SelectItem>
               <SelectItem value="90d">Last 90 days</SelectItem>
               <SelectItem value="1y">Last year</SelectItem>
+              <SelectItem value="all">All time</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" size="icon" onClick={() => refetch()} disabled={analyticsLoading}>
+            <RefreshCw className={`w-4 h-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
+          </Button>
           <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
             Export
