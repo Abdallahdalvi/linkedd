@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   User,
-  Camera,
   MapPin,
   Link as LinkIcon,
   Instagram,
@@ -14,6 +13,7 @@ import {
   Globe,
   Save,
   Eye,
+  Camera,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import MobilePreview from '@/components/MobilePreview';
+import ImageUpload from '@/components/ImageUpload';
 
 interface DashboardProfilePageProps {
   profile: any;
@@ -38,6 +39,8 @@ export default function DashboardProfilePage({
   const [displayName, setDisplayName] = useState(profile?.display_name || '');
   const [bio, setBio] = useState(profile?.bio || '');
   const [location, setLocation] = useState(profile?.location || '');
+  const [avatarUrl, setAvatarUrl] = useState(profile?.avatar_url || '');
+  const [coverUrl, setCoverUrl] = useState(profile?.cover_url || '');
   
   const [socialLinks, setSocialLinks] = useState({
     instagram: profile?.social_links?.instagram || '',
@@ -56,6 +59,8 @@ export default function DashboardProfilePage({
         display_name: displayName,
         bio,
         location,
+        avatar_url: avatarUrl,
+        cover_url: coverUrl,
         social_links: socialLinks,
       });
       toast.success('Profile updated successfully!');
@@ -84,6 +89,8 @@ export default function DashboardProfilePage({
     display_name: displayName,
     bio,
     location,
+    avatar_url: avatarUrl,
+    cover_url: coverUrl,
     social_links: socialLinks,
   };
 
@@ -132,25 +139,28 @@ export default function DashboardProfilePage({
             
             {/* Avatar */}
             <div className="flex items-center gap-6 mb-6">
-              <div className="relative">
-                <Avatar className="w-24 h-24">
-                  <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
-                    {displayName?.charAt(0) || profile?.username?.charAt(0)?.toUpperCase()}
-                  </AvatarFallback>
-                </Avatar>
-                <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors">
-                  <Camera className="w-4 h-4" />
-                </button>
-              </div>
+              <ImageUpload
+                currentImageUrl={avatarUrl}
+                onUploadComplete={setAvatarUrl}
+                folder="avatars"
+                aspectRatio="square"
+                className="w-24 h-24 rounded-full"
+                placeholder={
+                  <Avatar className="w-full h-full">
+                    <AvatarFallback className="bg-primary/10 text-primary text-2xl font-bold">
+                      {displayName?.charAt(0) || profile?.username?.charAt(0)?.toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                }
+              />
               <div>
                 <h3 className="font-medium text-foreground">Profile Photo</h3>
-                <p className="text-sm text-muted-foreground mb-2">
-                  Upload a profile picture for your page
+                <p className="text-sm text-muted-foreground">
+                  Click on the image to upload a profile picture
                 </p>
-                <Button variant="outline" size="sm">
-                  Upload Image
-                </Button>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Max 5MB • JPG, PNG, GIF
+                </p>
               </div>
             </div>
 
@@ -250,15 +260,28 @@ export default function DashboardProfilePage({
             className="glass-card p-6"
           >
             <h2 className="text-lg font-semibold text-foreground mb-6">Cover Image</h2>
+            <p className="text-sm text-muted-foreground mb-4">
+              This image will appear at the top of your profile page
+            </p>
             
-            <div className="h-32 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
-              <div className="text-center">
-                <Camera className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
-                  Click to upload a cover image
-                </p>
-              </div>
-            </div>
+            <ImageUpload
+              currentImageUrl={coverUrl}
+              onUploadComplete={setCoverUrl}
+              folder="covers"
+              aspectRatio="cover"
+              className="h-32"
+              placeholder={
+                <div className="text-center">
+                  <Camera className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Click to upload a cover image
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Recommended: 1200 x 400px
+                  </p>
+                </div>
+              }
+            />
           </motion.div>
         </div>
 
