@@ -208,6 +208,53 @@ export type Database = {
           },
         ]
       }
+      custom_domains: {
+        Row: {
+          created_at: string
+          dns_verified: boolean | null
+          domain: string
+          id: string
+          is_primary: boolean | null
+          profile_id: string
+          ssl_status: string | null
+          status: string
+          updated_at: string
+          verification_token: string | null
+        }
+        Insert: {
+          created_at?: string
+          dns_verified?: boolean | null
+          domain: string
+          id?: string
+          is_primary?: boolean | null
+          profile_id: string
+          ssl_status?: string | null
+          status?: string
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Update: {
+          created_at?: string
+          dns_verified?: boolean | null
+          domain?: string
+          id?: string
+          is_primary?: boolean | null
+          profile_id?: string
+          ssl_status?: string | null
+          status?: string
+          updated_at?: string
+          verification_token?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "custom_domains_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "link_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       link_profiles: {
         Row: {
           avatar_url: string | null
