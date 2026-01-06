@@ -471,23 +471,28 @@ function BlockPreview({ block, theme }: { block: Block; theme: ThemeColors }) {
                   alt="" 
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <div className="absolute inset-0 flex items-center justify-center">
                   <div 
-                    className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.95)' }}
+                    className="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
                   >
-                    <Play className="w-6 h-6 text-black ml-0.5" />
+                    <Play className="w-4 h-4 text-white/90 ml-0.5" fill="rgba(255,255,255,0.9)" />
                   </div>
                 </div>
               </>
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
-                <Play className="w-10 h-10 opacity-40" />
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center backdrop-blur-sm border border-white/30"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.35)' }}
+                >
+                  <Play className="w-4 h-4 text-white/70 ml-0.5" />
+                </div>
               </div>
             )}
           </div>
           <div className="p-3" style={{ color: theme.text }}>
-            <h3 className="text-xs font-semibold truncate">{block.title || 'Video'}</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wide truncate">{block.title || 'Video'}</h3>
             {block.subtitle && (
               <p className="text-[11px] opacity-60 truncate">{block.subtitle}</p>
             )}
