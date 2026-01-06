@@ -7,6 +7,7 @@ import {
   Globe,
   Smartphone,
   Monitor,
+  Tablet,
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
@@ -31,35 +32,31 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface DashboardAnalyticsPageProps {
   profile: any;
   blocks: any[];
 }
 
-const countryData = [
-  { country: 'United States', flag: '🇺🇸', views: 450, percentage: 45 },
-  { country: 'United Kingdom', flag: '🇬🇧', views: 180, percentage: 18 },
-  { country: 'Canada', flag: '🇨🇦', views: 120, percentage: 12 },
-  { country: 'Germany', flag: '🇩🇪', views: 96, percentage: 10 },
-  { country: 'Others', flag: '🌍', views: 150, percentage: 15 },
-];
+const deviceIcons: Record<string, any> = {
+  Mobile: Smartphone,
+  Desktop: Monitor,
+  Tablet: Tablet,
+  Unknown: Monitor,
+};
 
-const deviceData = [
-  { device: 'Mobile', icon: Smartphone, percentage: 72, color: 'bg-primary' },
-  { device: 'Desktop', icon: Monitor, percentage: 24, color: 'bg-accent' },
-  { device: 'Tablet', icon: Monitor, percentage: 4, color: 'bg-muted' },
-];
-
-const referrerData = [
-  { source: 'Instagram', visits: 320, percentage: 40 },
-  { source: 'Twitter/X', visits: 180, percentage: 22 },
-  { source: 'Direct', visits: 150, percentage: 19 },
-  { source: 'TikTok', visits: 100, percentage: 12 },
-  { source: 'Other', visits: 50, percentage: 7 },
-];
+const deviceColors: Record<string, string> = {
+  Mobile: 'bg-primary',
+  Desktop: 'bg-accent',
+  Tablet: 'bg-muted',
+  Unknown: 'bg-secondary',
+};
 
 export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAnalyticsPageProps) {
+  const { countryData, deviceData, referrerData, uniqueVisitors, loading: analyticsLoading } = useAnalytics(profile?.id);
+  
   const totalViews = profile?.total_views || 0;
   const totalClicks = blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0);
   const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : '0';
@@ -111,11 +108,11 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
 
       {/* Overview Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Profile Views', value: totalViews.toLocaleString(), change: '+18%', trend: 'up', icon: Eye },
-          { label: 'Link Clicks', value: totalClicks.toLocaleString(), change: '+24%', trend: 'up', icon: MousePointerClick },
-          { label: 'Click Rate (CTR)', value: `${ctr}%`, change: '+5%', trend: 'up', icon: TrendingUp },
-          { label: 'Unique Visitors', value: Math.floor(totalViews * 0.7).toLocaleString(), change: '+12%', trend: 'up', icon: Globe },
+      {[
+          { label: 'Profile Views', value: totalViews.toLocaleString(), icon: Eye },
+          { label: 'Link Clicks', value: totalClicks.toLocaleString(), icon: MousePointerClick },
+          { label: 'Click Rate (CTR)', value: `${ctr}%`, icon: TrendingUp },
+          { label: 'Unique Visitors', value: uniqueVisitors.toLocaleString(), icon: Globe },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -127,14 +124,6 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
             <div className="flex items-start justify-between mb-3">
               <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                 <stat.icon className="w-5 h-5 text-primary" />
-              </div>
-              <div className={`flex items-center gap-1 text-sm ${stat.trend === 'up' ? 'text-success' : 'text-destructive'}`}>
-                {stat.trend === 'up' ? (
-                  <ArrowUpRight className="w-4 h-4" />
-                ) : (
-                  <ArrowDownRight className="w-4 h-4" />
-                )}
-                {stat.change}
               </div>
             </div>
             <p className="text-2xl font-bold text-foreground">{stat.value}</p>
@@ -158,23 +147,37 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
             </h2>
           </div>
           <div className="p-6 space-y-4">
-            {countryData.map((country) => (
-              <div key={country.country} className="flex items-center gap-3">
-                <span className="text-xl">{country.flag}</span>
-                <div className="flex-1">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-foreground">{country.country}</span>
-                    <span className="text-sm text-muted-foreground">{country.percentage}%</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${country.percentage}%` }}
-                    />
+            {analyticsLoading ? (
+              Array(4).fill(0).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="w-8 h-8 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-2 w-full" />
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : countryData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No location data yet</p>
+            ) : (
+              countryData.map((country) => (
+                <div key={country.country} className="flex items-center gap-3">
+                  <span className="text-xl">{country.flag}</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-foreground">{country.country}</span>
+                      <span className="text-sm text-muted-foreground">{country.percentage}%</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${country.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -192,31 +195,52 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
             </h2>
           </div>
           <div className="p-6">
-            <div className="flex justify-center gap-4 mb-8">
-              {deviceData.map((device) => (
-                <div key={device.device} className="text-center">
-                  <div className={`w-16 h-16 rounded-full ${device.color} flex items-center justify-center mx-auto mb-2`}>
-                    <span className="text-lg font-bold text-white">{device.percentage}%</span>
-                  </div>
-                  <span className="text-sm text-muted-foreground">{device.device}</span>
+            {analyticsLoading ? (
+              <div className="space-y-4">
+                <div className="flex justify-center gap-4 mb-8">
+                  {Array(3).fill(0).map((_, i) => (
+                    <Skeleton key={i} className="w-16 h-16 rounded-full" />
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              {deviceData.map((device) => (
-                <div key={device.device} className="flex items-center gap-3">
-                  <device.icon className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm text-foreground flex-1">{device.device}</span>
-                  <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full ${device.color} rounded-full`}
-                      style={{ width: `${device.percentage}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium text-foreground w-10 text-right">{device.percentage}%</span>
+              </div>
+            ) : deviceData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">No device data yet</p>
+            ) : (
+              <>
+                <div className="flex justify-center gap-4 mb-8">
+                  {deviceData.map((device) => {
+                    const color = deviceColors[device.device] || 'bg-secondary';
+                    return (
+                      <div key={device.device} className="text-center">
+                        <div className={`w-16 h-16 rounded-full ${color} flex items-center justify-center mx-auto mb-2`}>
+                          <span className="text-lg font-bold text-white">{device.percentage}%</span>
+                        </div>
+                        <span className="text-sm text-muted-foreground">{device.device}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
+                <div className="space-y-3">
+                  {deviceData.map((device) => {
+                    const DeviceIcon = deviceIcons[device.device] || Monitor;
+                    const color = deviceColors[device.device] || 'bg-secondary';
+                    return (
+                      <div key={device.device} className="flex items-center gap-3">
+                        <DeviceIcon className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-foreground flex-1">{device.device}</span>
+                        <div className="w-24 h-2 bg-secondary rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full ${color} rounded-full`}
+                            style={{ width: `${device.percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-foreground w-10 text-right">{device.percentage}%</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
           </div>
         </motion.div>
 
@@ -234,22 +258,33 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
             </h2>
           </div>
           <div className="p-6 space-y-4">
-            {referrerData.map((ref) => (
-              <div key={ref.source} className="flex items-center gap-3">
-                <div className="flex-1">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-foreground">{ref.source}</span>
-                    <span className="text-sm text-muted-foreground">{ref.visits} visits</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-accent rounded-full transition-all"
-                      style={{ width: `${ref.percentage}%` }}
-                    />
+            {analyticsLoading ? (
+              Array(4).fill(0).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-2 w-full" />
+                </div>
+              ))
+            ) : referrerData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No referrer data yet</p>
+            ) : (
+              referrerData.map((ref) => (
+                <div key={ref.source} className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-foreground">{ref.source}</span>
+                      <span className="text-sm text-muted-foreground">{ref.visits} visits</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-accent rounded-full transition-all"
+                        style={{ width: `${ref.percentage}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </motion.div>
       </div>
