@@ -189,47 +189,52 @@ export default function PublicProfilePage() {
       className="min-h-screen"
       style={getBackgroundStyle()}
     >
-      <div className="min-h-screen backdrop-blur-sm bg-background/30">
-        <div className="max-w-md mx-auto px-4 py-12">
+      <div className="min-h-screen">
+        <div className="max-w-md mx-auto px-5 py-16">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center"
           >
-            {/* Avatar */}
-            <Avatar className="w-28 h-28 border-4 border-background shadow-xl">
-              <AvatarImage src={profile?.avatar_url || ''} />
-              <AvatarFallback className="bg-primary text-primary-foreground text-3xl font-bold">
-                {profile?.display_name?.charAt(0) || profile?.username.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
+            {/* Avatar with Glow */}
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary to-accent blur-xl opacity-40 scale-110" />
+              <Avatar className="w-28 h-28 border-4 border-white/50 shadow-2xl relative z-10">
+                <AvatarImage src={profile?.avatar_url || ''} className="object-cover" />
+                <AvatarFallback className="bg-gradient-to-br from-primary to-accent text-white text-3xl font-bold">
+                  {profile?.display_name?.charAt(0) || profile?.username.charAt(0)}
+                </AvatarFallback>
+              </Avatar>
+            </div>
 
-            {/* Name */}
-            <div className="mt-4 text-center">
+            {/* Name with Verified Badge */}
+            <div className="mt-5 text-center">
               <div className="flex items-center justify-center gap-2">
                 <h1 className="text-2xl font-display font-bold text-foreground">
                   {profile?.display_name || `@${profile?.username}`}
                 </h1>
-                <CheckCircle2 className="w-5 h-5 text-primary" />
+                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4 text-white" />
+                </div>
               </div>
               
               {profile?.bio && (
-                <p className="text-muted-foreground mt-2 max-w-sm">
+                <p className="text-muted-foreground mt-3 max-w-sm leading-relaxed">
                   {profile.bio}
                 </p>
               )}
 
               {profile?.location && (
-                <div className="flex items-center justify-center gap-1 mt-2 text-sm text-muted-foreground">
+                <div className="flex items-center justify-center gap-1.5 mt-3 text-sm text-muted-foreground/70">
                   <MapPin className="w-4 h-4" />
                   <span>{profile.location}</span>
                 </div>
               )}
             </div>
 
-            {/* Social Icons */}
+            {/* Social Icons Row */}
             {profile?.social_links && Object.keys(profile.social_links).length > 0 && (
-              <div className="flex items-center gap-4 mt-4">
+              <div className="flex items-center gap-3 mt-5">
                 {Object.entries(profile.social_links).map(([platform, url]) => {
                   const Icon = socialIcons[platform.toLowerCase()] || Globe;
                   return url ? (
@@ -238,7 +243,7 @@ export default function PublicProfilePage() {
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-10 h-10 rounded-full bg-foreground/10 backdrop-blur flex items-center justify-center hover:bg-foreground/20 transition-colors"
+                      className="w-11 h-11 rounded-full bg-foreground/10 backdrop-blur-xl flex items-center justify-center hover:bg-foreground/20 hover:scale-110 transition-all duration-200"
                     >
                       <Icon className="w-5 h-5 text-foreground" />
                     </a>
@@ -262,10 +267,10 @@ export default function PublicProfilePage() {
             </div>
 
             {/* Footer */}
-            <div className="mt-12 text-center">
+            <div className="mt-16 text-center">
               <a 
                 href="/"
-                className="text-sm text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                className="text-sm text-muted-foreground/40 hover:text-muted-foreground/60 transition-colors font-medium tracking-wide uppercase text-xs"
               >
                 Powered by LinkBio
               </a>
@@ -278,21 +283,21 @@ export default function PublicProfilePage() {
 }
 
 function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }) {
-  const baseClasses = "w-full p-4 rounded-2xl bg-card/80 backdrop-blur-xl border border-border/50 transition-all duration-200 cursor-pointer hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]";
+  const pillClasses = "w-full py-4 px-5 rounded-full bg-card/90 backdrop-blur-xl border border-border/30 transition-all duration-200 cursor-pointer hover:scale-[1.02] active:scale-[0.98] hover:shadow-lg";
 
   switch (block.type) {
     case 'link':
     case 'cta':
       return (
-        <button onClick={onClick} className={`${baseClasses} flex items-center gap-4 text-left`}>
+        <button onClick={onClick} className={`${pillClasses} flex items-center gap-4`}>
           {block.thumbnail_url && (
             <img 
               src={block.thumbnail_url} 
               alt="" 
-              className="w-12 h-12 rounded-xl object-cover"
+              className="w-11 h-11 rounded-full object-cover flex-shrink-0"
             />
           )}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 text-center">
             <h3 className="font-semibold text-foreground truncate">
               {block.title || 'Untitled Link'}
             </h3>
@@ -300,38 +305,40 @@ function BlockRenderer({ block, onClick }: { block: Block; onClick: () => void }
               <p className="text-sm text-muted-foreground truncate">{block.subtitle}</p>
             )}
           </div>
-          <ExternalLink className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+          {block.thumbnail_url && <div className="w-11 flex-shrink-0" />}
         </button>
       );
 
     case 'text':
       return (
-        <div className={`${baseClasses} cursor-default hover:scale-100`}>
-          <p className="text-foreground">{block.title}</p>
+        <div className="w-full py-4 px-5 rounded-2xl bg-card/90 backdrop-blur-xl">
+          <p className="text-foreground text-center">{block.title}</p>
         </div>
       );
 
     case 'divider':
       return (
-        <div className="py-2">
-          <div className="h-px bg-border/50" />
+        <div className="py-4">
+          <div className="h-px bg-border/30 mx-8" />
         </div>
       );
 
     case 'featured':
       return (
-        <button onClick={onClick} className={`${baseClasses} gradient-primary text-primary-foreground p-6`}>
-          <h3 className="font-bold text-lg">{block.title || 'Featured'}</h3>
-          {block.subtitle && (
-            <p className="opacity-90 mt-1">{block.subtitle}</p>
-          )}
+        <button onClick={onClick} className="w-full rounded-2xl overflow-hidden transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-xl">
+          <div className="gradient-primary p-6">
+            <h3 className="font-bold text-lg text-primary-foreground">{block.title || 'Featured'}</h3>
+            {block.subtitle && (
+              <p className="text-primary-foreground/90 mt-1">{block.subtitle}</p>
+            )}
+          </div>
         </button>
       );
 
     default:
       return (
-        <button onClick={onClick} className={baseClasses}>
-          <h3 className="font-semibold text-foreground">
+        <button onClick={onClick} className={pillClasses}>
+          <h3 className="font-semibold text-foreground text-center w-full">
             {block.title || 'Block'}
           </h3>
         </button>
