@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Settings,
@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useCustomDomains, CustomDomain } from '@/hooks/useCustomDomains';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,13 +53,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-interface CustomDomain {
-  domain: string;
-  status: 'verifying' | 'active' | 'failed' | 'pending';
-  isPrimary: boolean;
-  addedAt: string;
-}
 
 type CanonicalPreference = 'www' | 'non-www' | 'auto';
 
@@ -90,12 +84,21 @@ export default function DashboardSettingsPage({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
 
-  // Custom domain state
+  // Custom domain state - now using real hook
+  const { 
+    domains, 
+    loading: domainsLoading, 
+    addDomain, 
+    verifyDomain, 
+    removeDomain, 
+    setPrimaryDomain 
+  } = useCustomDomains(profile?.id);
+  
   const [showDomainDialog, setShowDomainDialog] = useState(false);
   const [customDomain, setCustomDomain] = useState('');
-  const [domains, setDomains] = useState<CustomDomain[]>([]);
   const [addingDomain, setAddingDomain] = useState(false);
   const [domainStep, setDomainStep] = useState<'input' | 'dns' | 'verify'>('input');
+  const [currentVerificationToken, setCurrentVerificationToken] = useState<string>('');
   const [canonicalPreference, setCanonicalPreference] = useState<CanonicalPreference>('non-www');
   const [forceHttps, setForceHttps] = useState(true);
 
@@ -281,7 +284,7 @@ export default function DashboardSettingsPage({
     toast.success('Notification settings saved!');
   };
 
-  const handleAddDomain = async () => {
+  const handleAddDomainSubmit = async () => {
     if (!customDomain.trim()) {
       toast.error('Please enter a domain');
       return;
@@ -294,50 +297,55 @@ export default function DashboardSettingsPage({
       return;
     }
 
-    setAddingDomain(true);
+    // Generate verification token for display
+    setCurrentVerificationToken(`lovable_verify_${profile?.id?.slice(0, 8) || 'ABC123'}`);
     setDomainStep('dns');
-    setAddingDomain(false);
   };
 
-  const handleVerifyDomain = async () => {
+  const handleVerifyDomainSubmit = async () => {
     setAddingDomain(true);
-    // Simulate verification
-    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    const newDomain: CustomDomain = {
-      domain: customDomain.trim(),
-      status: 'verifying',
-      isPrimary: domains.length === 0,
-      addedAt: new Date().toISOString(),
-    };
-
-    setDomains([...domains, newDomain]);
-    toast.success('Domain added! DNS verification in progress...');
-    setShowDomainDialog(false);
-    setCustomDomain('');
-    setDomainStep('input');
+    const result = await addDomain(customDomain.trim());
+    
+    if (result.success) {
+      toast.success('Domain added! DNS verification in progress...');
+      setShowDomainDialog(false);
+      setCustomDomain('');
+      setDomainStep('input');
+      
+      // After a delay, try to verify
+      setTimeout(async () => {
+        const domainToVerify = domains.find(d => d.domain === customDomain.trim().toLowerCase());
+        if (domainToVerify) {
+          const verifyResult = await verifyDomain(domainToVerify.id);
+          if (verifyResult.success) {
+            toast.success(`${customDomain} is now active!`);
+          }
+        }
+      }, 3000);
+    } else {
+      toast.error(result.error || 'Failed to add domain');
+    }
+    
     setAddingDomain(false);
-
-    // Simulate verification completing after delay
-    setTimeout(() => {
-      setDomains(prev => prev.map(d => 
-        d.domain === newDomain.domain ? { ...d, status: 'active' as const } : d
-      ));
-      toast.success(`${newDomain.domain} is now active!`);
-    }, 5000);
   };
 
-  const handleRemoveDomain = (domain: string) => {
-    setDomains(domains.filter(d => d.domain !== domain));
-    toast.success('Domain removed');
+  const handleRemoveDomainClick = async (domainId: string) => {
+    const result = await removeDomain(domainId);
+    if (result.success) {
+      toast.success('Domain removed');
+    } else {
+      toast.error(result.error || 'Failed to remove domain');
+    }
   };
 
-  const handleSetPrimary = (domain: string) => {
-    setDomains(domains.map(d => ({
-      ...d,
-      isPrimary: d.domain === domain
-    })));
-    toast.success(`${domain} set as primary domain`);
+  const handleSetPrimaryClick = async (domainId: string, domainName: string) => {
+    const result = await setPrimaryDomain(domainId);
+    if (result.success) {
+      toast.success(`${domainName} set as primary domain`);
+    } else {
+      toast.error(result.error || 'Failed to set primary domain');
+    }
   };
 
   const copyDnsRecord = (value: string) => {
@@ -437,7 +445,7 @@ export default function DashboardSettingsPage({
                     <div className="space-y-2">
                       {domains.map((domain) => (
                         <div 
-                          key={domain.domain}
+                          key={domain.id}
                           className="flex items-center justify-between p-3 bg-secondary rounded-lg"
                         >
                           <div className="flex items-center gap-3">
@@ -445,7 +453,7 @@ export default function DashboardSettingsPage({
                             <div>
                               <div className="flex items-center gap-2">
                                 <span className="font-mono text-sm">{domain.domain}</span>
-                                {domain.isPrimary && (
+                                {domain.is_primary && (
                                   <Badge variant="secondary" className="text-xs">Primary</Badge>
                                 )}
                               </div>
@@ -455,11 +463,11 @@ export default function DashboardSettingsPage({
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {!domain.isPrimary && domain.status === 'active' && (
+                            {!domain.is_primary && domain.status === 'active' && (
                               <Button 
                                 variant="ghost" 
                                 size="sm"
-                                onClick={() => handleSetPrimary(domain.domain)}
+                                onClick={() => handleSetPrimaryClick(domain.id, domain.domain)}
                               >
                                 Set Primary
                               </Button>
@@ -468,7 +476,7 @@ export default function DashboardSettingsPage({
                               variant="ghost" 
                               size="sm"
                               className="text-destructive hover:text-destructive"
-                              onClick={() => handleRemoveDomain(domain.domain)}
+                              onClick={() => handleRemoveDomainClick(domain.id)}
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>
@@ -1109,7 +1117,7 @@ export default function DashboardSettingsPage({
                   Cancel
                 </Button>
                 <Button 
-                  onClick={handleAddDomain} 
+                  onClick={handleAddDomainSubmit} 
                   disabled={addingDomain || !customDomain.trim()}
                   className="gradient-primary text-primary-foreground"
                 >
@@ -1124,7 +1132,7 @@ export default function DashboardSettingsPage({
                   Back
                 </Button>
                 <Button 
-                  onClick={handleVerifyDomain} 
+                  onClick={handleVerifyDomainSubmit} 
                   disabled={addingDomain}
                   className="gradient-primary text-primary-foreground"
                 >
