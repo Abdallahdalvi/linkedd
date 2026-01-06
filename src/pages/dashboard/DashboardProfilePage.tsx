@@ -205,13 +205,18 @@ export default function DashboardProfilePage({
                 <Label>Bio</Label>
                 <Textarea 
                   value={bio}
-                  onChange={(e) => setBio(e.target.value)}
+                  onChange={(e) => {
+                    if (e.target.value.length <= 500) {
+                      setBio(e.target.value);
+                    }
+                  }}
                   placeholder="Tell visitors about yourself..."
                   className="mt-2"
                   rows={3}
+                  maxLength={500}
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {bio.length}/160 characters
+                <p className={`text-xs mt-1 ${bio.length >= 450 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {bio.length}/500 characters
                 </p>
               </div>
 
