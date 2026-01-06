@@ -12,6 +12,8 @@ import {
   Calendar,
   Download,
   Link as LinkIcon,
+  ShoppingBag,
+  DollarSign,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +65,13 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
   const ctr = totalViews > 0 ? ((totalClicks / totalViews) * 100).toFixed(1) : '0';
 
   const topLinks = [...blocks]
+    .sort((a, b) => (b.total_clicks || 0) - (a.total_clicks || 0))
+    .slice(0, 5);
+
+  // Shop-specific analytics
+  const shopBlocks = blocks.filter(b => b.type === 'shop');
+  const shopClicks = shopBlocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0);
+  const topProducts = [...shopBlocks]
     .sort((a, b) => (b.total_clicks || 0) - (a.total_clicks || 0))
     .slice(0, 5);
 
@@ -306,6 +315,130 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
           </TableBody>
         </Table>
       </motion.div>
+
+      {/* Shop Analytics */}
+      {shopBlocks.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="glass-card mt-8"
+        >
+          <div className="p-6 border-b border-border">
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-primary" />
+              Shop Analytics
+            </h2>
+          </div>
+          
+          {/* Shop Stats */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-6">
+            <div className="p-4 rounded-xl bg-secondary/50">
+              <div className="flex items-center gap-2 mb-2">
+                <ShoppingBag className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Products</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{shopBlocks.length}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-secondary/50">
+              <div className="flex items-center gap-2 mb-2">
+                <MousePointerClick className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Product Clicks</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">{shopClicks}</p>
+            </div>
+            <div className="p-4 rounded-xl bg-secondary/50">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Click Rate</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">
+                {totalViews > 0 ? ((shopClicks / totalViews) * 100).toFixed(1) : 0}%
+              </p>
+            </div>
+            <div className="p-4 rounded-xl bg-secondary/50">
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="w-4 h-4 text-primary" />
+                <span className="text-sm text-muted-foreground">Avg. Price</span>
+              </div>
+              <p className="text-2xl font-bold text-foreground">
+                ${shopBlocks.length > 0 
+                  ? (shopBlocks.reduce((acc, b) => acc + parseFloat((b.content as any)?.price || '0'), 0) / shopBlocks.length).toFixed(2)
+                  : '0.00'}
+              </p>
+            </div>
+          </div>
+
+          {/* Top Products Table */}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-12">#</TableHead>
+                <TableHead>Product</TableHead>
+                <TableHead className="text-right">Price</TableHead>
+                <TableHead className="text-right">Clicks</TableHead>
+                <TableHead className="text-right">CTR</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {topProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                    No product data yet. Add shop blocks to start tracking!
+                  </TableCell>
+                </TableRow>
+              ) : (
+                topProducts.map((product, index) => {
+                  const productContent = product.content as { price?: string; currency?: string } | undefined;
+                  const currencySymbols: Record<string, string> = {
+                    USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
+                  };
+                  const symbol = currencySymbols[productContent?.currency || 'USD'] || '$';
+                  return (
+                    <TableRow key={product.id}>
+                      <TableCell>
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs ${
+                          index < 3 
+                            ? 'gradient-primary text-primary-foreground' 
+                            : 'bg-secondary text-muted-foreground'
+                        }`}>
+                          {index + 1}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          {product.thumbnail_url ? (
+                            <img src={product.thumbnail_url} alt="" className="w-10 h-10 rounded-lg object-cover" />
+                          ) : (
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <ShoppingBag className="w-5 h-5 text-primary" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium text-foreground">{product.title || 'Untitled Product'}</p>
+                            {product.subtitle && (
+                              <p className="text-sm text-muted-foreground truncate max-w-xs">{product.subtitle}</p>
+                            )}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-primary">
+                        {symbol}{productContent?.price || '0.00'}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">{product.total_clicks || 0}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-success font-medium">
+                          {totalViews > 0 ? (((product.total_clicks || 0) / totalViews) * 100).toFixed(1) : 0}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </motion.div>
+      )}
     </div>
   );
 }
