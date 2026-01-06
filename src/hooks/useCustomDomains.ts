@@ -84,23 +84,28 @@ export function useCustomDomains(profileId?: string) {
     }
   };
 
-  const verifyDomain = async (domainId: string): Promise<{ success: boolean; error?: string }> => {
+  const verifyDomain = async (domainId: string): Promise<{ success: boolean; error?: string; details?: any }> => {
     try {
-      // In a real implementation, this would verify DNS records
-      // For now, we'll simulate verification success
-      const { error } = await supabase
+      // Update status to verifying
+      await supabase
         .from('custom_domains')
-        .update({
-          status: 'active',
-          dns_verified: true,
-          ssl_status: 'active',
-        })
+        .update({ status: 'verifying' })
         .eq('id', domainId);
+
+      // Call edge function to verify DNS
+      const { data, error } = await supabase.functions.invoke('verify-domain-dns', {
+        body: { domainId },
+      });
 
       if (error) throw error;
 
       await fetchDomains();
-      return { success: true };
+      
+      return { 
+        success: data.success, 
+        error: data.success ? undefined : data.message,
+        details: data,
+      };
     } catch (error: any) {
       console.error('Error verifying domain:', error);
       return { success: false, error: error.message };
