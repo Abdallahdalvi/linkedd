@@ -77,8 +77,9 @@ export default function DashboardSettingsPage({
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
-  const [isPasswordProtected, setIsPasswordProtected] = useState(profile?.is_password_protected ?? false);
-  const [password, setPassword] = useState('');
+  // Password protection disabled - feature coming soon with proper encryption
+  const [isPasswordProtected] = useState(false);
+  const [password] = useState('');
   
   const [seoTitle, setSeoTitle] = useState(profile?.seo_title || '');
   const [seoDescription, setSeoDescription] = useState(profile?.seo_description || '');
@@ -108,8 +109,9 @@ export default function DashboardSettingsPage({
     try {
       await onUpdateProfile({
         is_public: isPublic,
-        is_password_protected: isPasswordProtected,
-        password_hash: isPasswordProtected && password ? password : null,
+        // Password protection disabled - would need server-side hashing
+        is_password_protected: false,
+        password_hash: null,
       });
       toast.success('Privacy settings saved!');
     } catch (error) {
@@ -659,7 +661,7 @@ export default function DashboardSettingsPage({
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between opacity-50">
                 <div>
                   <Label className="flex items-center gap-2">
                     <Lock className="w-4 h-4" />
@@ -668,28 +670,15 @@ export default function DashboardSettingsPage({
                   <p className="text-sm text-muted-foreground">
                     Require a password to view your profile
                   </p>
-                </div>
-                <Switch 
-                  checked={isPasswordProtected}
-                  onCheckedChange={setIsPasswordProtected}
-                />
-              </div>
-
-              {isPasswordProtected && (
-                <div>
-                  <Label>Profile Password</Label>
-                  <Input 
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter a password"
-                    className="mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Visitors will need this password to view your profile
+                  <p className="text-xs text-amber-600 mt-1">
+                    Coming soon - secure password protection
                   </p>
                 </div>
-              )}
+                <Switch 
+                  checked={false}
+                  disabled
+                />
+              </div>
 
               <div className="flex items-center justify-between">
                 <div>
