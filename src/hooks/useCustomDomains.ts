@@ -46,35 +46,48 @@ export function useCustomDomains(profileId?: string) {
     fetchDomains();
   }, [fetchDomains]);
 
-  const addDomain = async (domain: string): Promise<{ success: boolean; error?: string }> => {
+  const addDomain = async (domain: string, includeWww: boolean = true): Promise<{ success: boolean; error?: string }> => {
     if (!profileId) return { success: false, error: 'No profile' };
 
-    // Generate verification token
-    const verificationToken = `lovable_verify_${crypto.randomUUID().slice(0, 8)}`;
+    const normalizedDomain = domain.toLowerCase().replace(/^www\./, '');
+    const domainsToAdd: string[] = [normalizedDomain];
+    
+    // Add www version if it's a root domain and includeWww is true
+    if (includeWww && !normalizedDomain.startsWith('www.') && normalizedDomain.split('.').length === 2) {
+      domainsToAdd.push(`www.${normalizedDomain}`);
+    }
 
     try {
-      // Check if domain already exists
-      const { data: existing } = await supabase
-        .from('custom_domains')
-        .select('id')
-        .eq('domain', domain.toLowerCase())
-        .single();
+      // Check if any domain already exists
+      for (const d of domainsToAdd) {
+        const { data: existing } = await supabase
+          .from('custom_domains')
+          .select('id')
+          .eq('domain', d)
+          .maybeSingle();
 
-      if (existing) {
-        return { success: false, error: 'This domain is already registered' };
+        if (existing) {
+          return { success: false, error: `Domain ${d} is already registered` };
+        }
       }
 
-      const { error } = await supabase
-        .from('custom_domains')
-        .insert({
-          profile_id: profileId,
-          domain: domain.toLowerCase(),
-          status: 'pending',
-          is_primary: domains.length === 0,
-          verification_token: verificationToken,
-        });
+      // Add all domains
+      for (let i = 0; i < domainsToAdd.length; i++) {
+        const d = domainsToAdd[i];
+        const verificationToken = `lovable_verify_${crypto.randomUUID().slice(0, 8)}`;
+        
+        const { error } = await supabase
+          .from('custom_domains')
+          .insert({
+            profile_id: profileId,
+            domain: d,
+            status: 'pending',
+            is_primary: domains.length === 0 && i === 0, // Only first domain of first batch is primary
+            verification_token: verificationToken,
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       await fetchDomains();
       return { success: true };
