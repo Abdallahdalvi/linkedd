@@ -64,6 +64,33 @@ const fontOptions = [
   { value: 'playfair', label: 'Playfair Display' },
 ];
 
+const buttonStyles = [
+  { 
+    id: 'filled', 
+    name: 'Filled', 
+    description: 'Solid background color',
+    preview: 'bg-primary text-primary-foreground'
+  },
+  { 
+    id: 'outline', 
+    name: 'Outline', 
+    description: 'Border only, transparent fill',
+    preview: 'border-2 border-current bg-transparent'
+  },
+  { 
+    id: 'soft-shadow', 
+    name: 'Soft Shadow', 
+    description: 'Subtle shadow with soft edges',
+    preview: 'bg-white shadow-lg'
+  },
+  { 
+    id: 'glass', 
+    name: 'Glass', 
+    description: 'Frosted glass effect',
+    preview: 'bg-white/50 backdrop-blur-md border border-white/30'
+  },
+];
+
 export default function DashboardDesignPage({
   profile,
   blocks,
@@ -73,8 +100,9 @@ export default function DashboardDesignPage({
   const [selectedTheme, setSelectedTheme] = useState(profile?.theme_preset || 'default');
   const [backgroundType, setBackgroundType] = useState(profile?.background_type || 'solid');
   const [backgroundColor, setBackgroundColor] = useState(profile?.background_value || '#ffffff');
-  const [buttonRadius, setButtonRadius] = useState([16]);
-  const [enableAnimations, setEnableAnimations] = useState(true);
+  const [buttonRadius, setButtonRadius] = useState([profile?.custom_colors?.buttonRadius || 16]);
+  const [buttonStyle, setButtonStyle] = useState(profile?.custom_colors?.buttonStyle || 'filled');
+  const [enableAnimations, setEnableAnimations] = useState(profile?.custom_colors?.animations !== false);
 
   const currentTheme = themePresets.find(t => t.id === selectedTheme) || themePresets[0];
 
@@ -96,6 +124,7 @@ export default function DashboardDesignPage({
         background_value: backgroundColor,
         custom_colors: {
           buttonRadius: buttonRadius[0],
+          buttonStyle,
           animations: enableAnimations,
           ...currentTheme,
         },
@@ -115,6 +144,7 @@ export default function DashboardDesignPage({
     custom_colors: {
       ...profile?.custom_colors,
       buttonRadius: buttonRadius[0],
+      buttonStyle,
       animations: enableAnimations,
       ...currentTheme,
     },
@@ -332,8 +362,49 @@ export default function DashboardDesignPage({
                 <h2 className="text-lg font-semibold text-foreground mb-4">Button Styles</h2>
                 
                 <div className="space-y-6">
+                  {/* Button Style Selection */}
                   <div>
-                    <Label>Border Radius: {buttonRadius}px</Label>
+                    <Label className="mb-3 block">Style</Label>
+                    <div className="grid grid-cols-2 gap-3">
+                      {buttonStyles.map((style) => (
+                        <button
+                          key={style.id}
+                          onClick={() => setButtonStyle(style.id)}
+                          className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                            buttonStyle === style.id 
+                              ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
+                              : 'border-border hover:border-primary/50'
+                          }`}
+                        >
+                          {/* Preview */}
+                          <div 
+                            className={`w-full h-10 rounded-lg mb-3 flex items-center justify-center text-sm font-medium ${
+                              style.id === 'filled' ? 'bg-foreground text-background' :
+                              style.id === 'outline' ? 'border-2 border-foreground bg-transparent text-foreground' :
+                              style.id === 'soft-shadow' ? 'bg-card shadow-lg text-foreground' :
+                              'bg-white/60 backdrop-blur-md border border-white/40 text-foreground'
+                            }`}
+                            style={{ borderRadius: `${buttonRadius}px` }}
+                          >
+                            Preview
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <span className="text-sm font-medium text-foreground">{style.name}</span>
+                              <p className="text-xs text-muted-foreground mt-0.5">{style.description}</p>
+                            </div>
+                            {buttonStyle === style.id && (
+                              <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Border Radius */}
+                  <div className="pt-4 border-t border-border">
+                    <Label>Corner Radius: {buttonRadius}px</Label>
                     <Slider 
                       value={buttonRadius}
                       onValueChange={setButtonRadius}
@@ -341,20 +412,24 @@ export default function DashboardDesignPage({
                       step={2}
                       className="mt-4"
                     />
+                    <div className="flex gap-2 mt-3">
+                      {[0, 8, 16, 24, 32].map((radius) => (
+                        <button
+                          key={radius}
+                          onClick={() => setButtonRadius([radius])}
+                          className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                            buttonRadius[0] === radius 
+                              ? 'bg-primary text-primary-foreground' 
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                        >
+                          {radius === 0 ? 'Square' : radius === 32 ? 'Pill' : `${radius}px`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <Button style={{ borderRadius: `${buttonRadius}px` }}>
-                      Primary Button
-                    </Button>
-                    <Button variant="secondary" style={{ borderRadius: `${buttonRadius}px` }}>
-                      Secondary
-                    </Button>
-                    <Button variant="outline" style={{ borderRadius: `${buttonRadius}px` }}>
-                      Outline
-                    </Button>
-                  </div>
-
+                  {/* Animation Toggle */}
                   <div className="flex items-center justify-between pt-4 border-t border-border">
                     <div>
                       <Label>Enable Animations</Label>
