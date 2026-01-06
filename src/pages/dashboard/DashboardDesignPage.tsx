@@ -33,13 +33,19 @@ interface DashboardDesignPageProps {
 }
 
 export const themePresets = [
-  // Solid themes
-  { id: 'minimal', name: 'Minimal', bg: '#ffffff', text: '#1a1a1a', accent: '#1a1a1a', cardBg: '#ffffff', gradient: false },
-  { id: 'dark', name: 'Dark Mode', bg: '#0f0f0f', text: '#ffffff', accent: '#ffffff', cardBg: '#1a1a1a', gradient: false },
+  // Clean Solid Themes (Zaap-style)
+  { id: 'minimal', name: 'Minimal', bg: '#ffffff', text: '#1a1a1a', accent: '#1a1a1a', cardBg: '#f8f8f8', gradient: false },
+  { id: 'dark', name: 'Dark Mode', bg: '#0a0a0a', text: '#ffffff', accent: '#ffffff', cardBg: '#171717', gradient: false },
+  { id: 'slate', name: 'Slate', bg: '#0f172a', text: '#f1f5f9', accent: '#3b82f6', cardBg: '#1e293b', gradient: false },
+  { id: 'charcoal', name: 'Charcoal', bg: '#18181b', text: '#fafafa', accent: '#a1a1aa', cardBg: '#27272a', gradient: false },
   { id: 'cream', name: 'Cream', bg: '#fefdf8', text: '#292524', accent: '#78716c', cardBg: '#ffffff', gradient: false },
   { id: 'blush', name: 'Blush', bg: '#fdf2f8', text: '#831843', accent: '#ec4899', cardBg: '#ffffff', gradient: false },
+  { id: 'forest', name: 'Forest', bg: '#052e16', text: '#dcfce7', accent: '#22c55e', cardBg: '#14532d', gradient: false },
+  { id: 'ocean', name: 'Ocean', bg: '#0c4a6e', text: '#e0f2fe', accent: '#0ea5e9', cardBg: '#075985', gradient: false },
   
-  // Gradient themes (Linktree-style)
+  // Bold Gradient Themes
+  { id: 'neon-nights', name: 'Neon Nights', bg: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%)', text: '#ffffff', accent: '#f472b6', cardBg: 'rgba(15,15,35,0.9)', gradient: true },
+  { id: 'cyber-punk', name: 'Cyber Punk', bg: 'linear-gradient(135deg, #0d0d0d 0%, #1a0a2e 100%)', text: '#00ff88', accent: '#00ff88', cardBg: 'rgba(20,20,20,0.95)', gradient: true },
   { id: 'sunset-glow', name: 'Sunset Glow', bg: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)', text: '#1a1a1a', accent: '#ec4899', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
   { id: 'ocean-breeze', name: 'Ocean Breeze', bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', text: '#ffffff', accent: '#a78bfa', cardBg: 'rgba(30,30,60,0.9)', gradient: true },
   { id: 'mint-fresh', name: 'Mint Fresh', bg: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', text: '#1a1a1a', accent: '#14b8a6', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
@@ -48,6 +54,10 @@ export const themePresets = [
   { id: 'aurora', name: 'Aurora', bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 50%, #667eea 100%)', text: '#1a1a1a', accent: '#10b981', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
   { id: 'midnight-blue', name: 'Midnight', bg: 'linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e293b 100%)', text: '#e2e8f0', accent: '#38bdf8', cardBg: 'rgba(15,23,42,0.95)', gradient: true },
   { id: 'rose-gold', name: 'Rose Gold', bg: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', text: '#7c2d12', accent: '#f97316', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
+  { id: 'electric-blue', name: 'Electric Blue', bg: 'linear-gradient(135deg, #0c1445 0%, #1e3a8a 50%, #3b82f6 100%)', text: '#ffffff', accent: '#60a5fa', cardBg: 'rgba(30,58,138,0.9)', gradient: true },
+  { id: 'emerald-glow', name: 'Emerald Glow', bg: 'linear-gradient(135deg, #022c22 0%, #064e3b 50%, #059669 100%)', text: '#d1fae5', accent: '#34d399', cardBg: 'rgba(6,78,59,0.9)', gradient: true },
+  { id: 'warm-sunset', name: 'Warm Sunset', bg: 'linear-gradient(135deg, #7c2d12 0%, #dc2626 50%, #f97316 100%)', text: '#ffffff', accent: '#fbbf24', cardBg: 'rgba(124,45,18,0.9)', gradient: true },
+  { id: 'lavender-dream', name: 'Lavender Dream', bg: 'linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 50%, #a78bfa 100%)', text: '#1e1b4b', accent: '#7c3aed', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
 ];
 
 const backgroundTypes = [
