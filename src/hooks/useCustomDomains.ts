@@ -74,7 +74,8 @@ export function useCustomDomains(profileId?: string) {
       // Add all domains
       for (let i = 0; i < domainsToAdd.length; i++) {
         const d = domainsToAdd[i];
-        const verificationToken = `lovable_verify_${crypto.randomUUID().slice(0, 8)}`;
+        // Store only the unique part - the edge function will prepend "lovable_verify="
+        const verificationToken = crypto.randomUUID().slice(0, 8);
         
         const { error } = await supabase
           .from('custom_domains')

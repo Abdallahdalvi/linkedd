@@ -46,7 +46,7 @@ export function DnsInstructions({
     {
       type: 'TXT',
       name: '_lovable',
-      value: verificationToken,
+      value: `lovable_verify=${verificationToken}`,
       description: 'Verifies domain ownership',
       isVerified: txtRecordVerified,
     },
