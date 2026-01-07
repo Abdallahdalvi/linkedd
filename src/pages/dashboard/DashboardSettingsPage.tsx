@@ -100,7 +100,9 @@ export default function DashboardSettingsPage({
     addDomain, 
     verifyDomain, 
     removeDomain, 
-    setPrimaryDomain 
+    setPrimaryDomain,
+    regenerateToken,
+    refetch: refetchDomains,
   } = useCustomDomains(profile?.id);
   
   const [showDomainDialog, setShowDomainDialog] = useState(false);
@@ -112,6 +114,8 @@ export default function DashboardSettingsPage({
   const [forceHttps, setForceHttps] = useState(true);
   const [expandedDomainId, setExpandedDomainId] = useState<string | null>(null);
   const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
+  const [regeneratingDomainId, setRegeneratingDomainId] = useState<string | null>(null);
+  const [autoVerifyCountdown, setAutoVerifyCountdown] = useState<{ [domainId: string]: number }>({});
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -370,6 +374,71 @@ export default function DashboardSettingsPage({
     setVerifyingDomainId(null);
   };
 
+  const handleRegenerateToken = async (domainId: string) => {
+    setRegeneratingDomainId(domainId);
+    const result = await regenerateToken(domainId);
+    if (result.success) {
+      toast.success('Verification token regenerated! Update your DNS TXT record with the new value.');
+    } else {
+      toast.error(result.error || 'Failed to regenerate token');
+    }
+    setRegeneratingDomainId(null);
+  };
+
+  // Auto-verification polling for pending/verifying domains
+  useEffect(() => {
+    const pendingDomains = domains.filter(d => d.status === 'pending' || d.status === 'verifying');
+    
+    if (pendingDomains.length === 0) return;
+
+    // Initialize countdown for new pending domains
+    const newCountdowns: { [key: string]: number } = {};
+    pendingDomains.forEach(d => {
+      if (autoVerifyCountdown[d.id] === undefined) {
+        newCountdowns[d.id] = 30; // Start at 30 seconds
+      }
+    });
+    
+    if (Object.keys(newCountdowns).length > 0) {
+      setAutoVerifyCountdown(prev => ({ ...prev, ...newCountdowns }));
+    }
+
+    // Countdown timer
+    const countdownInterval = setInterval(() => {
+      setAutoVerifyCountdown(prev => {
+        const updated = { ...prev };
+        let shouldVerify = false;
+        
+        pendingDomains.forEach(d => {
+          if (updated[d.id] !== undefined && updated[d.id] > 0) {
+            updated[d.id] = updated[d.id] - 1;
+            if (updated[d.id] === 0) {
+              shouldVerify = true;
+            }
+          }
+        });
+        
+        return updated;
+      });
+    }, 1000);
+
+    // Check if any domain needs verification
+    const verifyInterval = setInterval(async () => {
+      for (const domain of pendingDomains) {
+        if (autoVerifyCountdown[domain.id] === 0 && verifyingDomainId !== domain.id) {
+          await verifyDomain(domain.id);
+          setAutoVerifyCountdown(prev => ({ ...prev, [domain.id]: 30 })); // Reset to 30 seconds
+        }
+      }
+      refetchDomains();
+    }, 5000);
+
+    return () => {
+      clearInterval(countdownInterval);
+      clearInterval(verifyInterval);
+    };
+  }, [domains, autoVerifyCountdown, verifyDomain, verifyingDomainId, refetchDomains]);
+
   const copyDnsRecord = (value: string) => {
     navigator.clipboard.writeText(value);
     toast.success('Copied to clipboard!');
@@ -527,6 +596,16 @@ export default function DashboardSettingsPage({
                             
                             <CollapsibleContent>
                               <div className="px-3 pb-4 space-y-4 border-t border-border/50 pt-4">
+                                {/* Auto-verification countdown for pending domains */}
+                                {(domain.status === 'pending' || domain.status === 'verifying') && autoVerifyCountdown[domain.id] !== undefined && (
+                                  <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg text-sm">
+                                    <RefreshCw className={`w-4 h-4 text-primary ${autoVerifyCountdown[domain.id] <= 5 ? 'animate-spin' : ''}`} />
+                                    <span className="text-muted-foreground">
+                                      Auto-checking DNS in <span className="font-mono font-medium text-foreground">{autoVerifyCountdown[domain.id]}s</span>
+                                    </span>
+                                  </div>
+                                )}
+                                
                                 {/* Domain Status Alert */}
                                 <DomainStatusAlert 
                                   domain={domain}
@@ -542,6 +621,8 @@ export default function DashboardSettingsPage({
                                   showVerificationStatus={true}
                                   aRecordVerified={domain.dns_verified}
                                   txtRecordVerified={domain.dns_verified}
+                                  onRegenerateToken={() => handleRegenerateToken(domain.id)}
+                                  isRegenerating={regeneratingDomainId === domain.id}
                                 />
                               </div>
                             </CollapsibleContent>

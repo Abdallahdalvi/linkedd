@@ -180,6 +180,29 @@ export function useCustomDomains(profileId?: string) {
     }
   };
 
+  const regenerateToken = async (domainId: string): Promise<{ success: boolean; newToken?: string; error?: string }> => {
+    try {
+      const newToken = crypto.randomUUID().slice(0, 8);
+      
+      const { error } = await supabase
+        .from('custom_domains')
+        .update({ 
+          verification_token: newToken,
+          status: 'pending',
+          dns_verified: false,
+        })
+        .eq('id', domainId);
+
+      if (error) throw error;
+
+      await fetchDomains();
+      return { success: true, newToken };
+    } catch (error: any) {
+      console.error('Error regenerating token:', error);
+      return { success: false, error: error.message };
+    }
+  };
+
   return {
     domains,
     loading,
@@ -187,6 +210,7 @@ export function useCustomDomains(profileId?: string) {
     verifyDomain,
     removeDomain,
     setPrimaryDomain,
+    regenerateToken,
     refetch: fetchDomains,
   };
 }
