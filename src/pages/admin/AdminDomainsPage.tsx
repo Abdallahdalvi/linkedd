@@ -171,7 +171,7 @@ export default function AdminDomainsPage() {
 
     setAdding(true);
     try {
-      const verificationToken = `lovable_verify_${crypto.randomUUID().slice(0, 8)}`;
+      const verificationToken = crypto.randomUUID().slice(0, 8);
       
       const { error } = await supabase
         .from('custom_domains')

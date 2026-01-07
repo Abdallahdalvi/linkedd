@@ -538,7 +538,7 @@ export default function DashboardSettingsPage({
                                 {/* DNS Instructions */}
                                 <DnsInstructions
                                   domain={domain.domain}
-                                  verificationToken={domain.verification_token || `lovable_verify_${profile?.id?.slice(0, 8) || 'ABC123'}`}
+                                  verificationToken={domain.verification_token || profile?.id?.slice(0, 8) || 'ABC123'}
                                   showVerificationStatus={true}
                                   aRecordVerified={domain.dns_verified}
                                   txtRecordVerified={domain.dns_verified}
@@ -1108,7 +1108,7 @@ export default function DashboardSettingsPage({
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
               <DnsInstructions
                 domain={customDomain.trim()}
-                verificationToken={`lovable_verify_${profile?.id?.slice(0, 8) || 'ABC123'}`}
+                verificationToken={profile?.id?.slice(0, 8) || 'ABC123'}
               />
 
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
