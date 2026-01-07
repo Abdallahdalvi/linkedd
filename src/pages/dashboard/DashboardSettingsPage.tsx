@@ -38,6 +38,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCustomDomains, CustomDomain } from '@/hooks/useCustomDomains';
 import { DnsInstructions } from '@/components/domain/DnsInstructions';
 import { DomainStatusAlert } from '@/components/domain/DomainStatusAlert';
+import { DomainSetupWizard } from '@/components/domain/DomainSetupWizard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -106,10 +107,6 @@ export default function DashboardSettingsPage({
   } = useCustomDomains(profile?.id);
   
   const [showDomainDialog, setShowDomainDialog] = useState(false);
-  const [customDomain, setCustomDomain] = useState('');
-  const [addingDomain, setAddingDomain] = useState(false);
-  const [domainStep, setDomainStep] = useState<'input' | 'dns' | 'verify'>('input');
-  const [currentVerificationToken, setCurrentVerificationToken] = useState<string>('');
   const [canonicalPreference, setCanonicalPreference] = useState<CanonicalPreference>('non-www');
   const [forceHttps, setForceHttps] = useState(true);
   const [expandedDomainId, setExpandedDomainId] = useState<string | null>(null);
@@ -297,52 +294,6 @@ export default function DashboardSettingsPage({
 
   const handleSaveNotifications = () => {
     toast.success('Notification settings saved!');
-  };
-
-  const handleAddDomainSubmit = async () => {
-    if (!customDomain.trim()) {
-      toast.error('Please enter a domain');
-      return;
-    }
-
-    // Basic domain validation
-    const domainRegex = /^([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
-    if (!domainRegex.test(customDomain.trim())) {
-      toast.error('Please enter a valid domain (e.g., example.com)');
-      return;
-    }
-
-    // Generate verification token for display
-    setCurrentVerificationToken(`lovable_verify_${profile?.id?.slice(0, 8) || 'ABC123'}`);
-    setDomainStep('dns');
-  };
-
-  const handleVerifyDomainSubmit = async () => {
-    setAddingDomain(true);
-    
-    const result = await addDomain(customDomain.trim());
-    
-    if (result.success) {
-      toast.success('Domain added! DNS verification in progress...');
-      setShowDomainDialog(false);
-      setCustomDomain('');
-      setDomainStep('input');
-      
-      // After a delay, try to verify
-      setTimeout(async () => {
-        const domainToVerify = domains.find(d => d.domain === customDomain.trim().toLowerCase());
-        if (domainToVerify) {
-          const verifyResult = await verifyDomain(domainToVerify.id);
-          if (verifyResult.success) {
-            toast.success(`${customDomain} is now active!`);
-          }
-        }
-      }, 3000);
-    } else {
-      toast.error(result.error || 'Failed to add domain');
-    }
-    
-    setAddingDomain(false);
   };
 
   const handleRemoveDomainClick = async (domainId: string) => {
@@ -1140,116 +1091,16 @@ export default function DashboardSettingsPage({
         </DialogContent>
       </Dialog>
 
-      {/* Custom Domain Dialog */}
-      <Dialog open={showDomainDialog} onOpenChange={(open) => {
-        setShowDomainDialog(open);
-        if (!open) {
-          setDomainStep('input');
-          setCustomDomain('');
-        }
-      }}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-primary" />
-              {domainStep === 'input' ? 'Add Custom Domain' : domainStep === 'dns' ? 'Configure DNS' : 'Verify Domain'}
-            </DialogTitle>
-            <DialogDescription>
-              {domainStep === 'input' && 'Enter your domain to connect it to your profile.'}
-              {domainStep === 'dns' && 'Add these DNS records at your domain registrar.'}
-              {domainStep === 'verify' && 'Click verify once DNS records are configured.'}
-            </DialogDescription>
-          </DialogHeader>
-
-          {domainStep === 'input' && (
-            <div className="space-y-4 py-4">
-              <div>
-                <Label>Domain Name</Label>
-                <Input 
-                  value={customDomain}
-                  onChange={(e) => setCustomDomain(e.target.value.toLowerCase())}
-                  placeholder="example.com"
-                  className="mt-2 font-mono"
-                />
-                <p className="text-xs text-muted-foreground mt-2">
-                  Enter just your domain name without http:// or www
-                </p>
-              </div>
-
-              <div className="p-3 bg-secondary rounded-lg">
-                <p className="text-sm text-muted-foreground">
-                  <strong>Tip:</strong> Add both <code className="text-foreground">yourdomain.com</code> and{' '}
-                  <code className="text-foreground">www.yourdomain.com</code> to ensure both resolve correctly.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {domainStep === 'dns' && (
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-              <DnsInstructions
-                domain={customDomain.trim()}
-                verificationToken={profile?.id?.slice(0, 8) || 'ABC123'}
-              />
-
-              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                <div className="flex gap-2">
-                  <AlertCircle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium text-foreground">DNS Propagation</p>
-                    <p className="text-muted-foreground">
-                      DNS changes can take up to 72 hours to propagate. We'll automatically check your 
-                      DNS configuration and notify you when verified.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <DialogFooter>
-            {domainStep === 'input' && (
-              <>
-                <Button variant="outline" onClick={() => setShowDomainDialog(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleAddDomainSubmit} 
-                  disabled={addingDomain || !customDomain.trim()}
-                  className="gradient-primary text-primary-foreground"
-                >
-                  Continue
-                </Button>
-              </>
-            )}
-
-            {domainStep === 'dns' && (
-              <>
-                <Button variant="outline" onClick={() => setDomainStep('input')}>
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleVerifyDomainSubmit} 
-                  disabled={addingDomain}
-                  className="gradient-primary text-primary-foreground"
-                >
-                  {addingDomain ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Verifying...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Verify & Add Domain
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Custom Domain Setup Wizard */}
+      <DomainSetupWizard
+        open={showDomainDialog}
+        onOpenChange={setShowDomainDialog}
+        profileId={profile?.id || ''}
+        onAddDomain={async (domainName) => {
+          const result = await addDomain(domainName);
+          return result;
+        }}
+      />
     </div>
   );
 }
