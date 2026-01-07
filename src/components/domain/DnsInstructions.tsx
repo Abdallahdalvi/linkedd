@@ -1,4 +1,4 @@
-import { Copy, CheckCircle, AlertTriangle, ExternalLink, Server, FileText, Shield } from 'lucide-react';
+import { Copy, CheckCircle, AlertTriangle, ExternalLink, Server, FileText, Shield, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -17,6 +17,8 @@ interface DnsInstructionsProps {
   showVerificationStatus?: boolean;
   aRecordVerified?: boolean;
   txtRecordVerified?: boolean;
+  onRegenerateToken?: () => void;
+  isRegenerating?: boolean;
 }
 
 export function DnsInstructions({ 
@@ -25,6 +27,8 @@ export function DnsInstructions({
   showVerificationStatus = false,
   aRecordVerified = false,
   txtRecordVerified = false,
+  onRegenerateToken,
+  isRegenerating = false,
 }: DnsInstructionsProps) {
   const isRootDomain = domain.split('.').length === 2 && !domain.startsWith('www.');
   
@@ -146,9 +150,23 @@ export function DnsInstructions({
                     </div>
                   </div>
 
-                  <p className="text-xs text-muted-foreground mt-2">
-                    {record.description}
-                  </p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-muted-foreground">
+                      {record.description}
+                    </p>
+                    {record.type === 'TXT' && onRegenerateToken && !record.isVerified && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={onRegenerateToken}
+                        disabled={isRegenerating}
+                      >
+                        <RefreshCw className={`w-3 h-3 mr-1 ${isRegenerating ? 'animate-spin' : ''}`} />
+                        {isRegenerating ? 'Regenerating...' : 'New Token'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
