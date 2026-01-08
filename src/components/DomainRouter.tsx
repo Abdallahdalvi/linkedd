@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-
-// Main domain where dashboard is hosted
-const MAIN_DOMAIN = 'links.dalvi.cloud';
+import { MAIN_DOMAIN, isDomainActive } from '@/config/domain';
 
 interface DomainRouterProps {
   children: React.ReactNode;
@@ -20,27 +18,28 @@ export function DomainRouter({ children }: DomainRouterProps) {
       const currentHost = window.location.hostname;
       
       // Allow localhost and main domain to access everything
+      // Remove Lovable-specific domain checks for Hostinger deployment
       if (
         currentHost === 'localhost' ||
         currentHost === '127.0.0.1' ||
         currentHost === MAIN_DOMAIN ||
-        currentHost.endsWith('.lovableproject.com') ||
-        currentHost.endsWith('.lovable.app')
+        currentHost.endsWith(`.${MAIN_DOMAIN}`)
       ) {
         setIsChecking(false);
         return;
       }
 
-      // This is a custom domain - check if it's registered
+      // This is a custom domain - check if it's registered and active
       try {
+        // Check for active_manual or active status (both work)
         const { data, error } = await supabase
           .from('custom_domains')
-          .select('profile_id, link_profiles!inner(username)')
+          .select('profile_id, status, link_profiles!inner(username)')
           .eq('domain', currentHost.toLowerCase())
-          .eq('status', 'active')
+          .in('status', ['active_manual', 'active'])
           .single();
 
-        if (data && (data.link_profiles as any)?.username) {
+        if (data && isDomainActive(data.status) && (data.link_profiles as any)?.username) {
           setIsCustomDomain(true);
           // Redirect to the profile page
           const username = (data.link_profiles as any).username;
@@ -91,12 +90,12 @@ export function useIsCustomDomain(): boolean {
 
   useEffect(() => {
     const currentHost = window.location.hostname;
+    // Remove Lovable-specific domain checks for Hostinger deployment
     const isCustom = !(
       currentHost === 'localhost' ||
       currentHost === '127.0.0.1' ||
       currentHost === MAIN_DOMAIN ||
-      currentHost.endsWith('.lovableproject.com') ||
-      currentHost.endsWith('.lovable.app')
+      currentHost.endsWith(`.${MAIN_DOMAIN}`)
     );
     setIsCustomDomain(isCustom);
   }, []);

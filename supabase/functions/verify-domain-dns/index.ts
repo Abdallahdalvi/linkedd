@@ -6,7 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EXPECTED_IP = '185.158.133.1';
+// Configuration - Update SERVER_IP when deploying to Hostinger
+const SERVER_IP = Deno.env.get('HOSTINGER_SERVER_IP') || '153.92.0.0';
+const APP_NAME = Deno.env.get('APP_NAME') || 'linkbio';
+const TXT_RECORD_NAME = `_${APP_NAME}`;
+const TXT_VERIFY_PREFIX = `${APP_NAME}_verify`;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -43,6 +47,7 @@ serve(async (req) => {
     }
 
     console.log(`Verifying DNS for domain: ${domain.domain}`);
+    console.log(`Expected IP: ${SERVER_IP}, TXT record: ${TXT_RECORD_NAME}`);
 
     const errors: string[] = [];
     let aRecordValid = false;
@@ -59,14 +64,14 @@ serve(async (req) => {
 
       if (aRecordData.Answer && aRecordData.Answer.length > 0) {
         const aRecords = aRecordData.Answer.filter((r: any) => r.type === 1);
-        const hasCorrectIP = aRecords.some((r: any) => r.data === EXPECTED_IP);
+        const hasCorrectIP = aRecords.some((r: any) => r.data === SERVER_IP);
         
         if (hasCorrectIP) {
           aRecordValid = true;
           console.log('A record valid - pointing to correct IP');
         } else {
           const foundIPs = aRecords.map((r: any) => r.data).join(', ');
-          errors.push(`A record points to ${foundIPs || 'unknown'}, expected ${EXPECTED_IP}`);
+          errors.push(`A record points to ${foundIPs || 'unknown'}, expected ${SERVER_IP}`);
           console.log('A record invalid:', errors[errors.length - 1]);
         }
       } else {
@@ -82,7 +87,7 @@ serve(async (req) => {
     if (domain.verification_token) {
       try {
         const txtRecordResponse = await fetch(
-          `https://cloudflare-dns.com/dns-query?name=_lovable.${domain.domain}&type=TXT`,
+          `https://cloudflare-dns.com/dns-query?name=${TXT_RECORD_NAME}.${domain.domain}&type=TXT`,
           { headers: { 'Accept': 'application/dns-json' } }
         );
         const txtRecordData = await txtRecordResponse.json();
@@ -90,7 +95,7 @@ serve(async (req) => {
 
         if (txtRecordData.Answer && txtRecordData.Answer.length > 0) {
           const txtRecords = txtRecordData.Answer.filter((r: any) => r.type === 16);
-          const expectedValue = `lovable_verify=${domain.verification_token}`;
+          const expectedValue = `${TXT_VERIFY_PREFIX}=${domain.verification_token}`;
           const hasValidToken = txtRecords.some((r: any) => {
             // TXT records are quoted, so we need to clean them
             const cleanedData = r.data.replace(/^"|"$/g, '');
@@ -101,11 +106,11 @@ serve(async (req) => {
             txtRecordValid = true;
             console.log('TXT record valid - verification token matches');
           } else {
-            errors.push(`TXT record at _lovable.${domain.domain} does not contain correct verification token`);
+            errors.push(`TXT record at ${TXT_RECORD_NAME}.${domain.domain} does not contain correct verification token`);
             console.log('TXT record invalid');
           }
         } else {
-          errors.push(`No TXT record found at _lovable.${domain.domain}`);
+          errors.push(`No TXT record found at ${TXT_RECORD_NAME}.${domain.domain}`);
           console.log('No TXT record found');
         }
       } catch (e) {
@@ -118,8 +123,18 @@ serve(async (req) => {
     }
 
     // Determine final status
+    // DNS verified = move to verified_dns (pending admin activation)
+    // DNS not verified = stay pending_dns or move to failed
     const dnsVerified = aRecordValid && txtRecordValid;
-    const newStatus = dnsVerified ? 'active' : 'failed';
+    let newStatus: string;
+    
+    if (dnsVerified) {
+      // DNS verified - waiting for admin to manually activate
+      newStatus = 'verified_dns';
+    } else {
+      // DNS not verified
+      newStatus = 'failed';
+    }
 
     // Update domain status
     const { error: updateError } = await supabase
@@ -127,7 +142,7 @@ serve(async (req) => {
       .update({
         status: newStatus,
         dns_verified: dnsVerified,
-        ssl_status: dnsVerified ? 'active' : 'pending',
+        ssl_status: 'pending', // SSL handled by Hostinger, not auto
         updated_at: new Date().toISOString(),
       })
       .eq('id', domainId);
@@ -148,8 +163,11 @@ serve(async (req) => {
         txtRecordValid,
         errors: errors.length > 0 ? errors : undefined,
         message: dnsVerified 
-          ? 'Domain verified successfully!' 
+          ? 'DNS verified! Waiting for admin activation.' 
           : `Verification failed: ${errors.join('; ')}`,
+        nextStep: dnsVerified 
+          ? 'Admin will configure your domain on Hostinger and activate it.'
+          : 'Please check your DNS settings and try again.',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Zap,
   HelpCircle,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +29,11 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { 
+  SERVER_IP, 
+  TXT_RECORD_NAME, 
+  formatTxtRecordValue 
+} from '@/config/domain';
 
 interface DnsRecord {
   type: 'A' | 'TXT' | 'CNAME';
@@ -48,10 +54,10 @@ interface DnsInstructionsProps {
   compact?: boolean;
 }
 
-// Popular DNS provider guides
+// Popular DNS provider guides (Hostinger-focused)
 const dnsProviders = [
+  { name: 'Hostinger', url: 'https://support.hostinger.com/en/articles/1583227-how-to-manage-dns-zone' },
   { name: 'GoDaddy', url: 'https://www.godaddy.com/help/manage-dns-records-680' },
-  { name: 'Cloudflare', url: 'https://developers.cloudflare.com/dns/manage-dns-records/' },
   { name: 'Namecheap', url: 'https://www.namecheap.com/support/knowledgebase/article.aspx/319/2237/' },
   { name: 'Google Domains', url: 'https://support.google.com/domains/answer/3290350' },
 ];
@@ -73,21 +79,21 @@ export function DnsInstructions({
     {
       type: 'A',
       name: '@',
-      value: '185.158.133.1',
-      description: 'Points your root domain to our servers',
+      value: SERVER_IP,
+      description: 'Points your root domain to the hosting server',
       isVerified: aRecordVerified,
     },
     ...(isRootDomain ? [{
       type: 'A' as const,
       name: 'www',
-      value: '185.158.133.1',
-      description: 'Points www subdomain to our servers',
+      value: SERVER_IP,
+      description: 'Points www subdomain to the hosting server',
       isVerified: aRecordVerified,
     }] : []),
     {
       type: 'TXT',
-      name: '_lovable',
-      value: `lovable_verify=${verificationToken}`,
+      name: TXT_RECORD_NAME,
+      value: formatTxtRecordValue(verificationToken),
       description: 'Verifies domain ownership',
       isVerified: txtRecordVerified,
     },
@@ -337,6 +343,17 @@ export function DnsInstructions({
         </AccordionItem>
       </Accordion>
 
+      {/* Admin Approval Notice */}
+      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+        <p className="text-xs text-muted-foreground flex items-start gap-2">
+          <Clock className="w-3 h-3 text-primary mt-0.5" />
+          <span>
+            <strong className="text-foreground">After verification:</strong> Domain activation requires admin approval. 
+            You'll be notified when your domain is live.
+          </span>
+        </p>
+      </div>
+
       {/* Helpful Links */}
       <div className="flex flex-wrap gap-2 pt-2">
         <Button 
@@ -352,10 +369,10 @@ export function DnsInstructions({
           variant="outline" 
           size="sm" 
           className="text-xs gap-1.5"
-          onClick={() => window.open('https://docs.lovable.dev/features/custom-domain', '_blank')}
+          onClick={() => window.open('https://support.hostinger.com/en/articles/1583227-how-to-manage-dns-zone', '_blank')}
         >
           <ExternalLink className="w-3 h-3" />
-          Documentation
+          Hostinger DNS Guide
         </Button>
       </div>
     </div>
