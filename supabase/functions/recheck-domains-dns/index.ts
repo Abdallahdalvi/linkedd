@@ -6,7 +6,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const EXPECTED_IP = '185.158.133.1';
+// Configuration - Update SERVER_IP when deploying to Hostinger
+const SERVER_IP = Deno.env.get('HOSTINGER_SERVER_IP') || '153.92.0.0';
+const APP_NAME = Deno.env.get('APP_NAME') || 'linkbio';
+const TXT_RECORD_NAME = `_${APP_NAME}`;
+const TXT_VERIFY_PREFIX = `${APP_NAME}_verify`;
 
 async function verifyDomainDns(domain: string, verificationToken: string | null): Promise<{
   aRecordValid: boolean;
@@ -27,13 +31,13 @@ async function verifyDomainDns(domain: string, verificationToken: string | null)
 
     if (aRecordData.Answer && aRecordData.Answer.length > 0) {
       const aRecords = aRecordData.Answer.filter((r: any) => r.type === 1);
-      const hasCorrectIP = aRecords.some((r: any) => r.data === EXPECTED_IP);
+      const hasCorrectIP = aRecords.some((r: any) => r.data === SERVER_IP);
       
       if (hasCorrectIP) {
         aRecordValid = true;
       } else {
         const foundIPs = aRecords.map((r: any) => r.data).join(', ');
-        errors.push(`A record points to ${foundIPs || 'unknown'}, expected ${EXPECTED_IP}`);
+        errors.push(`A record points to ${foundIPs || 'unknown'}, expected ${SERVER_IP}`);
       }
     } else {
       errors.push(`No A record found for ${domain}`);
@@ -46,14 +50,14 @@ async function verifyDomainDns(domain: string, verificationToken: string | null)
   if (verificationToken) {
     try {
       const txtRecordResponse = await fetch(
-        `https://cloudflare-dns.com/dns-query?name=_lovable.${domain}&type=TXT`,
+        `https://cloudflare-dns.com/dns-query?name=${TXT_RECORD_NAME}.${domain}&type=TXT`,
         { headers: { 'Accept': 'application/dns-json' } }
       );
       const txtRecordData = await txtRecordResponse.json();
 
       if (txtRecordData.Answer && txtRecordData.Answer.length > 0) {
         const txtRecords = txtRecordData.Answer.filter((r: any) => r.type === 16);
-        const expectedValue = `lovable_verify=${verificationToken}`;
+        const expectedValue = `${TXT_VERIFY_PREFIX}=${verificationToken}`;
         const hasValidToken = txtRecords.some((r: any) => {
           const cleanedData = r.data.replace(/^"|"$/g, '');
           return cleanedData === expectedValue;
@@ -65,7 +69,7 @@ async function verifyDomainDns(domain: string, verificationToken: string | null)
           errors.push(`TXT record does not contain correct verification token`);
         }
       } else {
-        errors.push(`No TXT record found at _lovable.${domain}`);
+        errors.push(`No TXT record found at ${TXT_RECORD_NAME}.${domain}`);
       }
     } catch (e) {
       errors.push('Failed to verify TXT record');
@@ -87,11 +91,12 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all active domains that need re-verification
+    // Get all domains that need re-verification
+    // Include active_manual domains to detect if DNS changed
     const { data: domains, error: fetchError } = await supabase
       .from('custom_domains')
       .select('*')
-      .in('status', ['active', 'verifying', 'pending']);
+      .in('status', ['active_manual', 'active', 'verified_dns', 'verifying', 'pending', 'pending_dns']);
 
     if (fetchError) {
       console.error('Error fetching domains:', fetchError);
@@ -125,11 +130,21 @@ serve(async (req) => {
       let newStatus = domain.status;
 
       // Update status based on verification result
-      if (dnsVerified && domain.status !== 'active') {
-        newStatus = 'active';
-      } else if (!dnsVerified && domain.status === 'active') {
-        // Domain was active but DNS no longer valid - mark as offline
-        newStatus = 'failed';
+      if (dnsVerified) {
+        // If DNS verified and not yet active, move to verified_dns
+        if (domain.status === 'pending' || domain.status === 'pending_dns' || domain.status === 'verifying') {
+          newStatus = 'verified_dns';
+        }
+        // If already active_manual or active, keep it
+      } else {
+        // DNS no longer valid
+        if (domain.status === 'active_manual' || domain.status === 'active') {
+          // Was active but DNS changed - mark as failed
+          newStatus = 'failed';
+        } else if (domain.status === 'verified_dns') {
+          // Was verified but DNS changed
+          newStatus = 'pending_dns';
+        }
       }
 
       if (newStatus !== domain.status || dnsVerified !== domain.dns_verified) {
@@ -138,7 +153,6 @@ serve(async (req) => {
           .update({
             status: newStatus,
             dns_verified: dnsVerified,
-            ssl_status: dnsVerified ? 'active' : 'pending',
             updated_at: new Date().toISOString(),
           })
           .eq('id', domain.id);

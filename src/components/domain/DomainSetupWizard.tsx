@@ -13,6 +13,7 @@ import {
   Sparkles,
   Shield,
   Zap,
+  Clock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { 
+  SERVER_IP, 
+  TXT_RECORD_NAME, 
+  formatTxtRecordValue,
+  generateVerificationToken 
+} from '@/config/domain';
 
 interface DomainSetupWizardProps {
   open: boolean;
@@ -77,8 +84,8 @@ export function DomainSetupWizard({
       return;
     }
 
-    // Generate verification token
-    const token = `lovable_verify_${profileId.slice(0, 8)}`;
+    // Generate verification token using config
+    const token = generateVerificationToken(profileId);
     setVerificationToken(token);
     setCurrentStep('dns-a');
   };
@@ -312,8 +319,8 @@ export function DomainSetupWizard({
                 <DnsRecordCard
                   type="A"
                   name="@"
-                  value="185.158.133.1"
-                  description="Points your domain to our servers"
+                  value={SERVER_IP}
+                  description="Points your domain to the hosting server"
                 />
 
                 {/* Also add www */}
@@ -361,8 +368,8 @@ export function DomainSetupWizard({
 
                 <DnsRecordCard
                   type="TXT"
-                  name="_lovable"
-                  value={`lovable_verify=${verificationToken}`}
+                  name={TXT_RECORD_NAME}
+                  value={formatTxtRecordValue(verificationToken)}
                   description="Proves domain ownership"
                 />
 
@@ -406,11 +413,11 @@ export function DomainSetupWizard({
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="p-2 bg-background rounded-lg">
                       <span className="text-muted-foreground">A Record:</span>
-                      <span className="ml-1 font-mono">185.158.133.1</span>
+                      <span className="ml-1 font-mono">{SERVER_IP}</span>
                     </div>
                     <div className="p-2 bg-background rounded-lg">
                       <span className="text-muted-foreground">TXT:</span>
-                      <span className="ml-1 font-mono">_lovable</span>
+                      <span className="ml-1 font-mono">{TXT_RECORD_NAME}</span>
                     </div>
                   </div>
                 </div>
@@ -481,9 +488,9 @@ export function DomainSetupWizard({
                 </motion.div>
 
                 <div className="space-y-2">
-                  <h3 className="text-xl font-semibold">Domain Connected!</h3>
+                  <h3 className="text-xl font-semibold">DNS Verified!</h3>
                   <p className="text-muted-foreground">
-                    Your domain is now linked to your profile
+                    Your domain is now pending admin activation
                   </p>
                 </div>
 
@@ -492,9 +499,15 @@ export function DomainSetupWizard({
                   <span className="font-mono font-medium">{domain}</span>
                 </div>
 
-                <p className="text-sm text-muted-foreground">
-                  SSL certificate will be automatically provisioned. Your site will be live shortly!
-                </p>
+                <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <p className="text-sm text-muted-foreground flex items-start gap-2">
+                    <Clock className="w-4 h-4 text-primary mt-0.5" />
+                    <span>
+                      <strong className="text-foreground">Next step:</strong> Admin will configure your domain on the 
+                      server and activate it. You'll be notified when it's live.
+                    </span>
+                  </p>
+                </div>
 
                 <Button className="w-full" onClick={handleClose}>
                   Done
