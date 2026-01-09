@@ -24,6 +24,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { isMainDomain } from '@/config/domain';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -210,6 +211,24 @@ export default function PublicProfilePage() {
       }
 
       setProfile(parsedProfile);
+
+      // Check for canonical domain redirect (only on main domain)
+      const currentHost = window.location.hostname;
+      if (isMainDomain(currentHost)) {
+        const { data: primaryDomain } = await supabase
+          .from('custom_domains')
+          .select('domain')
+          .eq('profile_id', profileData.id)
+          .in('status', ['active', 'active_manual'])
+          .eq('is_primary', true)
+          .maybeSingle();
+
+        if (primaryDomain?.domain) {
+          // 302 redirect to the custom domain
+          window.location.replace(`http://${primaryDomain.domain}/`);
+          return;
+        }
+      }
 
       // Track view and increment total_views
       const visitorId = getVisitorId();
