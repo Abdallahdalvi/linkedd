@@ -69,6 +69,16 @@ export function isDomainActive(status: string): boolean {
   return normalized === 'active_manual';
 }
 
+// Check if current hostname is the main domain (not a custom domain)
+export function isMainDomain(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === MAIN_DOMAIN ||
+    hostname.endsWith(`.${MAIN_DOMAIN}`)
+  );
+}
+
 // Human-readable status labels
 export function getStatusLabel(status: string): string {
   const normalized = normalizeStatus(status);

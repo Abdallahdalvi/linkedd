@@ -222,7 +222,7 @@ export async function getProfileByDomain(domain: string): Promise<string | null>
       .from('custom_domains')
       .select('profile_id, link_profiles!inner(username)')
       .eq('domain', domain.toLowerCase())
-      .eq('status', 'active')
+      .in('status', ['active', 'active_manual'])
       .single();
 
     if (error || !data) return null;
