@@ -69,7 +69,7 @@ export function DomainRouter({ children }: DomainRouterProps) {
         path === '/'
       ) {
         // Redirect to main domain for these routes
-        window.location.href = `http://${MAIN_DOMAIN}${path}`;
+        window.location.href = `${window.location.protocol}//${MAIN_DOMAIN}${path}`;
       }
     }
   }, [isCustomDomain, location.pathname]);
@@ -104,5 +104,6 @@ export function useIsCustomDomain(): boolean {
 }
 
 export function getMainDomainUrl(path: string = ''): string {
-  return `http://${MAIN_DOMAIN}${path}`;
+  const protocol = typeof window !== 'undefined' ? window.location.protocol : 'https:';
+  return `${protocol}//${MAIN_DOMAIN}${path}`;
 }
