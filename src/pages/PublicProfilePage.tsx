@@ -224,8 +224,8 @@ export default function PublicProfilePage() {
           .maybeSingle();
 
         if (primaryDomain?.domain) {
-          // 302 redirect to the custom domain
-          window.location.replace(`http://${primaryDomain.domain}/`);
+          // 302 redirect to the custom domain (preserve current protocol)
+          window.location.replace(`${window.location.protocol}//${primaryDomain.domain}/`);
           return;
         }
       }
