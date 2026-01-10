@@ -6,8 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Configuration - Update SERVER_IP when deploying to Hostinger
-const SERVER_IP = Deno.env.get('HOSTINGER_SERVER_IP') || '153.92.0.0';
+// Configuration - VPS server IP for DNS verification
+const SERVER_IP = Deno.env.get('HOSTINGER_SERVER_IP') || '72.61.227.134';
 const APP_NAME = Deno.env.get('APP_NAME') || 'linkbio';
 const TXT_RECORD_NAME = `_${APP_NAME}`;
 const TXT_VERIFY_PREFIX = `${APP_NAME}_verify`;
