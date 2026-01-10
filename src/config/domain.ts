@@ -5,9 +5,8 @@
  * Update SERVER_IP when deploying to Hostinger or any other hosting provider.
  */
 
-// The IP address of your Hostinger server
-// Find this in hPanel → Hosting → Details → Server IP
-export const SERVER_IP = '153.92.0.0'; // TODO: Replace with your actual Hostinger server IP
+// The IP address of your VPS server
+export const SERVER_IP = '72.61.227.134';
 
 // Main domain where the dashboard/admin is hosted
 export const MAIN_DOMAIN = import.meta.env.VITE_MAIN_DOMAIN || 'links.dalvi.cloud';
