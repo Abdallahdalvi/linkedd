@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MAIN_DOMAIN, isDomainActive } from '@/config/domain';
 
@@ -7,18 +7,21 @@ interface DomainRouterProps {
   children: React.ReactNode;
 }
 
+interface CustomDomainData {
+  username: string;
+  profileId: string;
+}
+
 export function DomainRouter({ children }: DomainRouterProps) {
-  const navigate = useNavigate();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
-  const [isCustomDomain, setIsCustomDomain] = useState(false);
+  const [customDomainData, setCustomDomainData] = useState<CustomDomainData | null>(null);
 
   useEffect(() => {
     const checkDomain = async () => {
       const currentHost = window.location.hostname;
       
-      // Allow localhost and main domain to access everything
-      // Remove Lovable-specific domain checks for Hostinger deployment
+      // Allow localhost and main domain to access everything normally
       if (
         currentHost === 'localhost' ||
         currentHost === '127.0.0.1' ||
@@ -31,21 +34,17 @@ export function DomainRouter({ children }: DomainRouterProps) {
 
       // This is a custom domain - check if it's registered and active
       try {
-        // Check for active_manual or active status (both work)
         const { data, error } = await supabase
           .from('custom_domains')
           .select('profile_id, status, link_profiles!inner(username)')
           .eq('domain', currentHost.toLowerCase())
-          .in('status', ['active_manual', 'active'])
           .single();
 
         if (data && isDomainActive(data.status) && (data.link_profiles as any)?.username) {
-          setIsCustomDomain(true);
-          // Redirect to the profile page
-          const username = (data.link_profiles as any).username;
-          if (location.pathname === '/' || location.pathname === '') {
-            navigate(`/${username}`, { replace: true });
-          }
+          setCustomDomainData({
+            username: (data.link_profiles as any).username,
+            profileId: data.profile_id,
+          });
         }
       } catch (error) {
         console.error('Domain lookup error:', error);
@@ -55,24 +54,23 @@ export function DomainRouter({ children }: DomainRouterProps) {
     };
 
     checkDomain();
-  }, [navigate, location.pathname]);
+  }, []);
 
-  // If on custom domain, only allow profile routes
+  // If on custom domain, block access to dashboard/admin/auth routes
   useEffect(() => {
-    if (isCustomDomain) {
+    if (customDomainData) {
       const path = location.pathname;
       // Block access to dashboard, admin, auth routes on custom domains
       if (
         path.startsWith('/dashboard') ||
         path.startsWith('/admin') ||
-        path.startsWith('/auth') ||
-        path === '/'
+        path.startsWith('/auth')
       ) {
         // Redirect to main domain for these routes
         window.location.href = `${window.location.protocol}//${MAIN_DOMAIN}${path}`;
       }
     }
-  }, [isCustomDomain, location.pathname]);
+  }, [customDomainData, location.pathname]);
 
   if (isChecking) {
     return (
@@ -85,12 +83,53 @@ export function DomainRouter({ children }: DomainRouterProps) {
   return <>{children}</>;
 }
 
+// Hook to get custom domain data if on a custom domain
+export function useCustomDomainProfile(): CustomDomainData | null {
+  const [data, setData] = useState<CustomDomainData | null>(null);
+
+  useEffect(() => {
+    const checkDomain = async () => {
+      const currentHost = window.location.hostname;
+      
+      // Not a custom domain
+      if (
+        currentHost === 'localhost' ||
+        currentHost === '127.0.0.1' ||
+        currentHost === MAIN_DOMAIN ||
+        currentHost.endsWith(`.${MAIN_DOMAIN}`)
+      ) {
+        return;
+      }
+
+      try {
+        const { data: domainData } = await supabase
+          .from('custom_domains')
+          .select('profile_id, status, link_profiles!inner(username)')
+          .eq('domain', currentHost.toLowerCase())
+          .single();
+
+        if (domainData && isDomainActive(domainData.status) && (domainData.link_profiles as any)?.username) {
+          setData({
+            username: (domainData.link_profiles as any).username,
+            profileId: domainData.profile_id,
+          });
+        }
+      } catch (error) {
+        console.error('Domain lookup error:', error);
+      }
+    };
+
+    checkDomain();
+  }, []);
+
+  return data;
+}
+
 export function useIsCustomDomain(): boolean {
   const [isCustomDomain, setIsCustomDomain] = useState(false);
 
   useEffect(() => {
     const currentHost = window.location.hostname;
-    // Remove Lovable-specific domain checks for Hostinger deployment
     const isCustom = !(
       currentHost === 'localhost' ||
       currentHost === '127.0.0.1' ||

@@ -31,32 +31,28 @@ export function formatTxtRecordValue(token: string): string {
   return `${TXT_VERIFY_PREFIX}=${token}`;
 }
 
-// Domain status types for Hostinger deployment
+// Domain status types - simplified for automatic activation
 export type DomainStatus = 
-  | 'pending_dns'       // User just added domain, DNS not configured yet
-  | 'verified_dns'      // DNS verified, waiting for admin activation
-  | 'pending_activation' // Alias for verified_dns (clearer for users)
-  | 'active_manual'     // Admin manually activated (domain working)
-  | 'active'            // Alias for active_manual (backward compat)
-  | 'rejected'          // Admin rejected the domain
-  | 'failed';           // DNS verification failed
+  | 'pending'          // User just added domain, DNS not configured yet
+  | 'verifying'        // DNS verification in progress
+  | 'active'           // Domain is active and working (auto-activated when DNS verified)
+  | 'failed';          // DNS verification failed
 
-// Map old statuses to new ones for backward compatibility
+// Normalize status for backward compatibility
 export function normalizeStatus(status: string): DomainStatus {
   switch (status) {
     case 'pending':
     case 'pending_dns':
-      return 'pending_dns';
+      return 'pending';
     case 'verifying':
     case 'verified_dns':
     case 'pending_activation':
-      return 'verified_dns';
+      return 'verifying';
     case 'active':
     case 'active_manual':
-      return 'active_manual';
-    case 'rejected':
-      return 'rejected';
+      return 'active';
     case 'failed':
+    case 'rejected':
     default:
       return 'failed';
   }
@@ -65,7 +61,7 @@ export function normalizeStatus(status: string): DomainStatus {
 // Check if status allows the domain to be used
 export function isDomainActive(status: string): boolean {
   const normalized = normalizeStatus(status);
-  return normalized === 'active_manual';
+  return normalized === 'active';
 }
 
 // Check if current hostname is the main domain (not a custom domain)
@@ -82,14 +78,12 @@ export function isMainDomain(hostname: string): boolean {
 export function getStatusLabel(status: string): string {
   const normalized = normalizeStatus(status);
   switch (normalized) {
-    case 'pending_dns':
+    case 'pending':
       return 'Pending DNS Setup';
-    case 'verified_dns':
-      return 'Waiting for Activation';
-    case 'active_manual':
+    case 'verifying':
+      return 'Verifying DNS';
+    case 'active':
       return 'Active';
-    case 'rejected':
-      return 'Rejected';
     case 'failed':
       return 'DNS Failed';
     default:
@@ -101,14 +95,12 @@ export function getStatusLabel(status: string): string {
 export function getStatusDescription(status: string): string {
   const normalized = normalizeStatus(status);
   switch (normalized) {
-    case 'pending_dns':
+    case 'pending':
       return 'Configure DNS records at your domain registrar';
-    case 'verified_dns':
-      return 'DNS verified! Admin will activate your domain shortly';
-    case 'active_manual':
+    case 'verifying':
+      return 'Checking your DNS records...';
+    case 'active':
       return 'Your domain is live and working';
-    case 'rejected':
-      return 'Domain was not approved. Contact support for details';
     case 'failed':
       return 'DNS verification failed. Check your DNS settings';
     default:
