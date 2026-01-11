@@ -158,8 +158,13 @@ const getThemeColors = (profile: Profile | null): ThemeColors => {
   };
 };
 
-export default function PublicProfilePage() {
-  const { username } = useParams<{ username: string }>();
+interface PublicProfilePageProps {
+  forcedUsername?: string;
+}
+
+export default function PublicProfilePage({ forcedUsername }: PublicProfilePageProps = {}) {
+  const { username: paramUsername } = useParams<{ username: string }>();
+  const username = forcedUsername || paramUsername;
   const [profile, setProfile] = useState<Profile | null>(null);
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,13 +218,16 @@ export default function PublicProfilePage() {
       setProfile(parsedProfile);
 
       // Check for canonical domain redirect (only on main domain)
+      // Only redirect to custom domain if not already on a custom domain and not forced username
       const currentHost = window.location.hostname;
-      if (isMainDomain(currentHost)) {
+      const isOnMainDomain = isMainDomain(currentHost);
+      
+      if (isOnMainDomain && !forcedUsername) {
         const { data: primaryDomain } = await supabase
           .from('custom_domains')
           .select('domain')
           .eq('profile_id', profileData.id)
-          .in('status', ['active', 'active_manual'])
+          .eq('status', 'active')
           .eq('is_primary', true)
           .maybeSingle();
 

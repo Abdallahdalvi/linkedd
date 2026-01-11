@@ -91,12 +91,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get all domains that need re-verification
-    // Include active_manual domains to detect if DNS changed
+    // Get all domains that need verification or re-verification
     const { data: domains, error: fetchError } = await supabase
       .from('custom_domains')
       .select('*')
-      .in('status', ['active_manual', 'active', 'verified_dns', 'verifying', 'pending', 'pending_dns']);
+      .in('status', ['active', 'verifying', 'pending', 'failed']);
 
     if (fetchError) {
       console.error('Error fetching domains:', fetchError);
@@ -129,21 +128,20 @@ serve(async (req) => {
       const dnsVerified = aRecordValid && txtRecordValid;
       let newStatus = domain.status;
 
-      // Update status based on verification result
+      // Auto-activate when DNS is verified
       if (dnsVerified) {
-        // If DNS verified and not yet active, move to verified_dns
-        if (domain.status === 'pending' || domain.status === 'pending_dns' || domain.status === 'verifying') {
-          newStatus = 'verified_dns';
+        // If DNS verified, set to active
+        if (domain.status !== 'active') {
+          newStatus = 'active';
         }
-        // If already active_manual or active, keep it
       } else {
         // DNS no longer valid
-        if (domain.status === 'active_manual' || domain.status === 'active') {
+        if (domain.status === 'active') {
           // Was active but DNS changed - mark as failed
           newStatus = 'failed';
-        } else if (domain.status === 'verified_dns') {
-          // Was verified but DNS changed
-          newStatus = 'pending_dns';
+        } else if (domain.status === 'pending' || domain.status === 'verifying') {
+          // Still pending, keep trying
+          newStatus = domain.status;
         }
       }
 
@@ -153,6 +151,7 @@ serve(async (req) => {
           .update({
             status: newStatus,
             dns_verified: dnsVerified,
+            ssl_status: dnsVerified ? 'active' : 'pending',
             updated_at: new Date().toISOString(),
           })
           .eq('id', domain.id);

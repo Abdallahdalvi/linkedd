@@ -122,15 +122,13 @@ serve(async (req) => {
       txtRecordValid = true;
     }
 
-    // Determine final status
-    // DNS verified = move to verified_dns (pending admin activation)
-    // DNS not verified = stay pending_dns or move to failed
+    // Determine final status - AUTO-ACTIVATE when DNS is verified
     const dnsVerified = aRecordValid && txtRecordValid;
     let newStatus: string;
     
     if (dnsVerified) {
-      // DNS verified - waiting for admin to manually activate
-      newStatus = 'verified_dns';
+      // DNS verified - AUTOMATICALLY ACTIVATE the domain
+      newStatus = 'active';
     } else {
       // DNS not verified
       newStatus = 'failed';
@@ -142,7 +140,7 @@ serve(async (req) => {
       .update({
         status: newStatus,
         dns_verified: dnsVerified,
-        ssl_status: 'pending', // SSL handled by Hostinger, not auto
+        ssl_status: dnsVerified ? 'active' : 'pending',
         updated_at: new Date().toISOString(),
       })
       .eq('id', domainId);
@@ -163,10 +161,10 @@ serve(async (req) => {
         txtRecordValid,
         errors: errors.length > 0 ? errors : undefined,
         message: dnsVerified 
-          ? 'DNS verified! Waiting for admin activation.' 
+          ? 'Domain verified and activated! Your custom domain is now live.' 
           : `Verification failed: ${errors.join('; ')}`,
         nextStep: dnsVerified 
-          ? 'Admin will configure your domain on Hostinger and activate it.'
+          ? 'Your domain is ready to use.'
           : 'Please check your DNS settings and try again.',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
