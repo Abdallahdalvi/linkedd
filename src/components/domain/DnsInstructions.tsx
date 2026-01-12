@@ -343,13 +343,13 @@ export function DnsInstructions({
         </AccordionItem>
       </Accordion>
 
-      {/* Admin Approval Notice */}
-      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+      {/* Auto-Activation Notice */}
+      <div className="p-3 bg-success/5 border border-success/20 rounded-lg">
         <p className="text-xs text-muted-foreground flex items-start gap-2">
-          <Clock className="w-3 h-3 text-primary mt-0.5" />
+          <Zap className="w-3 h-3 text-success mt-0.5" />
           <span>
-            <strong className="text-foreground">After verification:</strong> Domain activation requires admin approval. 
-            You'll be notified when your domain is live.
+            <strong className="text-foreground">Automatic activation:</strong> Once DNS records are verified,
+            your domain will be activated automatically. No manual approval needed!
           </span>
         </p>
       </div>
