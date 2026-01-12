@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,7 +6,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { DomainRouter, useCustomDomainProfile } from "./components/DomainRouter";
+import { MAIN_DOMAIN, isDomainActive } from "./config/domain";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -60,6 +62,30 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
   return <>{children}</>;
 }
 
+// Component that handles custom domain routing
+function CustomDomainHandler({ children }: { children: React.ReactNode }) {
+  const customDomainData = useCustomDomainProfile();
+  
+  // If on a custom domain with valid profile, show the profile directly
+  if (customDomainData) {
+    // For custom domains, always show the profile page for that user
+    return <PublicProfilePage forcedUsername={customDomainData.username} />;
+  }
+  
+  return <>{children}</>;
+}
+
+// Check if current hostname is a custom domain
+function isCustomDomain(): boolean {
+  const currentHost = window.location.hostname;
+  return !(
+    currentHost === 'localhost' ||
+    currentHost === '127.0.0.1' ||
+    currentHost === MAIN_DOMAIN ||
+    currentHost.endsWith(`.${MAIN_DOMAIN}`)
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
@@ -67,16 +93,20 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
-            <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/dashboard/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
-            <Route path="/admin/*" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
-            <Route path="/:username" element={<PublicProfilePage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <DomainRouter>
+            <CustomDomainHandler>
+              <Routes>
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                <Route path="/dashboard/*" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
+                <Route path="/admin/*" element={<ProtectedRoute requireAdmin><AdminPage /></ProtectedRoute>} />
+                <Route path="/:username" element={<PublicProfilePage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </CustomDomainHandler>
+          </DomainRouter>
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
