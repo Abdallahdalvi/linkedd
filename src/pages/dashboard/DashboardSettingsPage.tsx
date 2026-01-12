@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Settings,
   Shield,
-  Bell,
   Globe,
   Lock,
   Eye,
@@ -13,16 +12,7 @@ import {
   Download,
   Copy,
   Key,
-  Mail,
   LogOut,
-  ExternalLink,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  Link as LinkIcon,
-  RefreshCw,
-  ChevronDown,
-  ChevronUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,15 +20,10 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useCustomDomains, CustomDomain } from '@/hooks/useCustomDomains';
-import { DnsInstructions } from '@/components/domain/DnsInstructions';
-import { DomainStatusAlert } from '@/components/domain/DomainStatusAlert';
-import { DomainSetupWizard } from '@/components/domain/DomainSetupWizard';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -58,13 +43,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-
-type CanonicalPreference = 'www' | 'non-www' | 'auto';
 
 interface DashboardSettingsPageProps {
   profile: any;
@@ -93,26 +71,6 @@ export default function DashboardSettingsPage({
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [changingPassword, setChangingPassword] = useState(false);
-
-  // Custom domain state - now using real hook
-  const { 
-    domains, 
-    loading: domainsLoading, 
-    addDomain, 
-    verifyDomain, 
-    removeDomain, 
-    setPrimaryDomain,
-    regenerateToken,
-    refetch: refetchDomains,
-  } = useCustomDomains(profile?.id);
-  
-  const [showDomainDialog, setShowDomainDialog] = useState(false);
-  const [canonicalPreference, setCanonicalPreference] = useState<CanonicalPreference>('non-www');
-  const [forceHttps, setForceHttps] = useState(true);
-  const [expandedDomainId, setExpandedDomainId] = useState<string | null>(null);
-  const [verifyingDomainId, setVerifyingDomainId] = useState<string | null>(null);
-  const [regeneratingDomainId, setRegeneratingDomainId] = useState<string | null>(null);
-  const [autoVerifyCountdown, setAutoVerifyCountdown] = useState<{ [domainId: string]: number }>({});
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
@@ -227,7 +185,7 @@ export default function DashboardSettingsPage({
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `linksdc-export-${profile?.username || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `linkbio-export-${profile?.username || 'data'}-${new Date().toISOString().split('T')[0]}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -296,118 +254,6 @@ export default function DashboardSettingsPage({
     toast.success('Notification settings saved!');
   };
 
-  const handleRemoveDomainClick = async (domainId: string) => {
-    const result = await removeDomain(domainId);
-    if (result.success) {
-      toast.success('Domain removed');
-    } else {
-      toast.error(result.error || 'Failed to remove domain');
-    }
-  };
-
-  const handleSetPrimaryClick = async (domainId: string, domainName: string) => {
-    const result = await setPrimaryDomain(domainId);
-    if (result.success) {
-      toast.success(`${domainName} set as primary domain`);
-    } else {
-      toast.error(result.error || 'Failed to set primary domain');
-    }
-  };
-
-  const handleVerifyDomainClick = async (domainId: string) => {
-    setVerifyingDomainId(domainId);
-    const result = await verifyDomain(domainId);
-    if (result.success) {
-      toast.success('Domain verified successfully!');
-    } else {
-      toast.error(result.error || 'Verification failed. Check your DNS configuration.');
-    }
-    setVerifyingDomainId(null);
-  };
-
-  const handleRegenerateToken = async (domainId: string) => {
-    setRegeneratingDomainId(domainId);
-    const result = await regenerateToken(domainId);
-    if (result.success) {
-      toast.success('Verification token regenerated! Update your DNS TXT record with the new value.');
-    } else {
-      toast.error(result.error || 'Failed to regenerate token');
-    }
-    setRegeneratingDomainId(null);
-  };
-
-  // Auto-verification polling for pending/verifying domains
-  useEffect(() => {
-    const pendingDomains = domains.filter(d => d.status === 'pending' || d.status === 'verifying');
-    
-    if (pendingDomains.length === 0) return;
-
-    // Initialize countdown for new pending domains
-    const newCountdowns: { [key: string]: number } = {};
-    pendingDomains.forEach(d => {
-      if (autoVerifyCountdown[d.id] === undefined) {
-        newCountdowns[d.id] = 30; // Start at 30 seconds
-      }
-    });
-    
-    if (Object.keys(newCountdowns).length > 0) {
-      setAutoVerifyCountdown(prev => ({ ...prev, ...newCountdowns }));
-    }
-
-    // Countdown timer
-    const countdownInterval = setInterval(() => {
-      setAutoVerifyCountdown(prev => {
-        const updated = { ...prev };
-        let shouldVerify = false;
-        
-        pendingDomains.forEach(d => {
-          if (updated[d.id] !== undefined && updated[d.id] > 0) {
-            updated[d.id] = updated[d.id] - 1;
-            if (updated[d.id] === 0) {
-              shouldVerify = true;
-            }
-          }
-        });
-        
-        return updated;
-      });
-    }, 1000);
-
-    // Check if any domain needs verification
-    const verifyInterval = setInterval(async () => {
-      for (const domain of pendingDomains) {
-        if (autoVerifyCountdown[domain.id] === 0 && verifyingDomainId !== domain.id) {
-          await verifyDomain(domain.id);
-          setAutoVerifyCountdown(prev => ({ ...prev, [domain.id]: 30 })); // Reset to 30 seconds
-        }
-      }
-      refetchDomains();
-    }, 5000);
-
-    return () => {
-      clearInterval(countdownInterval);
-      clearInterval(verifyInterval);
-    };
-  }, [domains, autoVerifyCountdown, verifyDomain, verifyingDomainId, refetchDomains]);
-
-  const copyDnsRecord = (value: string) => {
-    navigator.clipboard.writeText(value);
-    toast.success('Copied to clipboard!');
-  };
-
-  const getDomainStatusBadge = (status: CustomDomain['status']) => {
-    switch (status) {
-      case 'active':
-        return <Badge className="bg-success/10 text-success border-success/20"><CheckCircle className="w-3 h-3 mr-1" /> Active</Badge>;
-      case 'verifying':
-        return <Badge className="bg-warning/10 text-warning border-warning/20"><Clock className="w-3 h-3 mr-1" /> Verifying</Badge>;
-      case 'failed':
-        return <Badge className="bg-destructive/10 text-destructive border-destructive/20"><AlertCircle className="w-3 h-3 mr-1" /> Failed</Badge>;
-      default:
-        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
-    }
-  };
-
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -465,240 +311,10 @@ export default function DashboardSettingsPage({
                     </Button>
                   </div>
                 </div>
-
-                <div className="pt-4 border-t border-border">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="font-medium text-foreground">Custom Domain</h3>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setShowDomainDialog(true)}
-                    >
-                      <Globe className="w-4 h-4 mr-2" />
-                      Add Domain
-                    </Button>
-                  </div>
-                  
-                  {domains.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      Connect your own domain to your profile for a professional look.
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {domains.map((domain) => (
-                        <Collapsible 
-                          key={domain.id}
-                          open={expandedDomainId === domain.id}
-                          onOpenChange={(open) => setExpandedDomainId(open ? domain.id : null)}
-                        >
-                          <div className="bg-secondary rounded-lg overflow-hidden">
-                            <div className="flex items-center justify-between p-3">
-                              <div className="flex items-center gap-3">
-                                <Globe className="w-4 h-4 text-muted-foreground" />
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-mono text-sm">{domain.domain}</span>
-                                    {domain.is_primary && (
-                                      <Badge variant="secondary" className="text-xs">Primary</Badge>
-                                    )}
-                                  </div>
-                                  <div className="mt-1">
-                                    {getDomainStatusBadge(domain.status)}
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {domain.status !== 'active' && (
-                                  <CollapsibleTrigger asChild>
-                                    <Button variant="ghost" size="sm">
-                                      {expandedDomainId === domain.id ? (
-                                        <>
-                                          <ChevronUp className="w-4 h-4 mr-1" />
-                                          Hide DNS
-                                        </>
-                                      ) : (
-                                        <>
-                                          <ChevronDown className="w-4 h-4 mr-1" />
-                                          Show DNS
-                                        </>
-                                      )}
-                                    </Button>
-                                  </CollapsibleTrigger>
-                                )}
-                                {!domain.is_primary && domain.status === 'active' && (
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm"
-                                    onClick={() => handleSetPrimaryClick(domain.id, domain.domain)}
-                                  >
-                                    Set Primary
-                                  </Button>
-                                )}
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => handleRemoveDomainClick(domain.id)}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-                            
-                            <CollapsibleContent>
-                              <div className="px-3 pb-4 space-y-4 border-t border-border/50 pt-4">
-                                {/* Auto-verification countdown for pending domains */}
-                                {(domain.status === 'pending' || domain.status === 'verifying') && autoVerifyCountdown[domain.id] !== undefined && (
-                                  <div className="flex items-center gap-2 p-2 bg-primary/5 rounded-lg text-sm">
-                                    <RefreshCw className={`w-4 h-4 text-primary ${autoVerifyCountdown[domain.id] <= 5 ? 'animate-spin' : ''}`} />
-                                    <span className="text-muted-foreground">
-                                      Auto-checking DNS in <span className="font-mono font-medium text-foreground">{autoVerifyCountdown[domain.id]}s</span>
-                                    </span>
-                                  </div>
-                                )}
-                                
-                                {/* Domain Status Alert */}
-                                <DomainStatusAlert 
-                                  domain={domain}
-                                  onVerify={() => handleVerifyDomainClick(domain.id)}
-                                  onRetry={() => handleVerifyDomainClick(domain.id)}
-                                  isVerifying={verifyingDomainId === domain.id}
-                                />
-                                
-                                {/* DNS Instructions */}
-                                <DnsInstructions
-                                  domain={domain.domain}
-                                  verificationToken={domain.verification_token || profile?.id?.slice(0, 8) || 'ABC123'}
-                                  showVerificationStatus={true}
-                                  aRecordVerified={domain.dns_verified}
-                                  txtRecordVerified={domain.dns_verified}
-                                  onRegenerateToken={() => handleRegenerateToken(domain.id)}
-                                  isRegenerating={regeneratingDomainId === domain.id}
-                                />
-                              </div>
-                            </CollapsibleContent>
-                          </div>
-                        </Collapsible>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Domain Redirect Settings */}
-                  {domains.length > 0 && (
-                    <div className="pt-4 mt-4 border-t border-border space-y-4">
-                      <h4 className="font-medium text-foreground text-sm">Redirect Settings</h4>
-                      
-                      {/* Canonical URL Preference */}
-                      <div className="space-y-2">
-                        <Label className="text-sm">Canonical URL</Label>
-                        <p className="text-xs text-muted-foreground mb-2">
-                          Choose which version of your domain should be the primary URL. The other will redirect.
-                        </p>
-                        <div className="flex flex-col gap-2">
-                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
-                            <input
-                              type="radio"
-                              name="canonical"
-                              value="non-www"
-                              checked={canonicalPreference === 'non-www'}
-                              onChange={() => {
-                                setCanonicalPreference('non-www');
-                                toast.success('Canonical URL set to non-www');
-                              }}
-                              className="w-4 h-4 text-primary"
-                            />
-                            <div>
-                              <span className="font-mono text-sm">example.com</span>
-                              <span className="text-xs text-muted-foreground ml-2">(recommended)</span>
-                            </div>
-                          </label>
-                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
-                            <input
-                              type="radio"
-                              name="canonical"
-                              value="www"
-                              checked={canonicalPreference === 'www'}
-                              onChange={() => {
-                                setCanonicalPreference('www');
-                                toast.success('Canonical URL set to www');
-                              }}
-                              className="w-4 h-4 text-primary"
-                            />
-                            <div>
-                              <span className="font-mono text-sm">www.example.com</span>
-                            </div>
-                          </label>
-                          <label className="flex items-center gap-3 p-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
-                            <input
-                              type="radio"
-                              name="canonical"
-                              value="auto"
-                              checked={canonicalPreference === 'auto'}
-                              onChange={() => {
-                                setCanonicalPreference('auto');
-                                toast.success('Canonical URL set to auto');
-                              }}
-                              className="w-4 h-4 text-primary"
-                            />
-                            <div>
-                              <span className="text-sm">Auto (no redirect)</span>
-                              <span className="text-xs text-muted-foreground ml-2">Both versions work independently</span>
-                            </div>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* HTTPS Redirect */}
-                      <div className="flex items-center justify-between p-3 bg-secondary rounded-lg">
-                        <div>
-                          <Label className="text-sm">Force HTTPS</Label>
-                          <p className="text-xs text-muted-foreground">
-                            Redirect all HTTP traffic to HTTPS
-                          </p>
-                        </div>
-                        <Switch 
-                          checked={forceHttps}
-                          onCheckedChange={(checked) => {
-                            setForceHttps(checked);
-                            toast.success(checked ? 'HTTPS enforced' : 'HTTP allowed');
-                          }}
-                        />
-                      </div>
-
-                      {/* Preview */}
-                      <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
-                        <div className="flex items-start gap-2">
-                          <LinkIcon className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                          <div className="text-sm">
-                            <p className="font-medium text-foreground">Redirect Preview</p>
-                            <p className="text-muted-foreground text-xs mt-1">
-                              {canonicalPreference === 'non-www' && (
-                                <>
-                                  <span className="text-muted-foreground/70 line-through">www.{domains[0]?.domain}</span>
-                                  <span className="mx-2">→</span>
-                                  <span className="text-foreground">{forceHttps ? 'https://' : ''}{domains[0]?.domain}</span>
-                                </>
-                              )}
-                              {canonicalPreference === 'www' && (
-                                <>
-                                  <span className="text-muted-foreground/70 line-through">{domains[0]?.domain}</span>
-                                  <span className="mx-2">→</span>
-                                  <span className="text-foreground">{forceHttps ? 'https://' : ''}www.{domains[0]?.domain}</span>
-                                </>
-                              )}
-                              {canonicalPreference === 'auto' && (
-                                <>Both {domains[0]?.domain} and www.{domains[0]?.domain} serve independently</>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
             </motion.div>
 
+            {/* Notifications Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -712,7 +328,7 @@ export default function DashboardSettingsPage({
                   <div>
                     <Label>Email Notifications</Label>
                     <p className="text-sm text-muted-foreground">
-                      Get notified about important updates
+                      Receive updates via email
                     </p>
                   </div>
                   <Switch 
@@ -723,9 +339,9 @@ export default function DashboardSettingsPage({
 
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label>Weekly Analytics Report</Label>
+                    <Label>Weekly Report</Label>
                     <p className="text-sm text-muted-foreground">
-                      Receive weekly performance summaries
+                      Get a weekly analytics summary
                     </p>
                   </div>
                   <Switch 
@@ -738,7 +354,7 @@ export default function DashboardSettingsPage({
                   <div>
                     <Label>Milestone Alerts</Label>
                     <p className="text-sm text-muted-foreground">
-                      Get notified when you hit view milestones
+                      Get notified when you reach view milestones
                     </p>
                   </div>
                   <Switch 
@@ -747,7 +363,7 @@ export default function DashboardSettingsPage({
                   />
                 </div>
 
-                <Button onClick={handleSaveNotifications} variant="outline" className="mt-4">
+                <Button onClick={handleSaveNotifications} className="w-full mt-4">
                   <Save className="w-4 h-4 mr-2" />
                   Save Notifications
                 </Button>
@@ -758,43 +374,66 @@ export default function DashboardSettingsPage({
 
         {/* Privacy Tab */}
         <TabsContent value="privacy">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="glass-card p-6 max-w-2xl"
-          >
-            <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-              <Shield className="w-5 h-5 text-primary" />
-              Privacy Settings
-            </h2>
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="flex items-center gap-2">
-                    {isPublic ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    Public Profile
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    When disabled, only you can view your profile
-                  </p>
-                </div>
-                <Switch 
-                  checked={isPublic}
-                  onCheckedChange={setIsPublic}
-                />
-              </div>
-
-              <div className="space-y-4 p-4 border border-border rounded-lg">
+          <div className="grid lg:grid-cols-2 gap-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-card p-6"
+            >
+              <h2 className="text-lg font-semibold text-foreground mb-6">Visibility</h2>
+              
+              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="flex items-center gap-2">
-                      <Lock className="w-4 h-4" />
-                      Password Protection
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Require a password to view your profile
-                    </p>
+                  <div className="flex items-center gap-3">
+                    {isPublic ? (
+                      <Eye className="w-5 h-5 text-primary" />
+                    ) : (
+                      <EyeOff className="w-5 h-5 text-muted-foreground" />
+                    )}
+                    <div>
+                      <Label>Public Profile</Label>
+                      <p className="text-sm text-muted-foreground">
+                        {isPublic 
+                          ? 'Anyone can view your profile' 
+                          : 'Only you can view your profile'}
+                      </p>
+                    </div>
+                  </div>
+                  <Switch 
+                    checked={isPublic}
+                    onCheckedChange={setIsPublic}
+                  />
+                </div>
+
+                <Button 
+                  onClick={handleSavePrivacy} 
+                  disabled={saving}
+                  className="w-full"
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  {saving ? 'Saving...' : 'Save Privacy Settings'}
+                </Button>
+              </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="glass-card p-6"
+            >
+              <h2 className="text-lg font-semibold text-foreground mb-6">Password Protection</h2>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-primary" />
+                    <div>
+                      <Label>Require Password</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Visitors must enter a password to view
+                      </p>
+                    </div>
                   </div>
                   <Switch 
                     checked={isPasswordProtected}
@@ -803,62 +442,29 @@ export default function DashboardSettingsPage({
                 </div>
 
                 {isPasswordProtected && (
-                  <div className="space-y-2">
-                    <Label htmlFor="profilePassword">Profile Password</Label>
+                  <div>
+                    <Label>Profile Password</Label>
                     <Input 
-                      id="profilePassword"
                       type="password"
                       value={profilePassword}
                       onChange={(e) => setProfilePassword(e.target.value)}
-                      placeholder="Enter a password (min 4 characters)"
-                      className="mt-1"
+                      placeholder="Enter password for visitors"
+                      className="mt-2"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Visitors will need this password to view your profile. Password is securely encrypted.
-                    </p>
                   </div>
                 )}
 
                 <Button 
                   onClick={handleSavePasswordProtection}
-                  disabled={savingPassword || (isPasswordProtected && profilePassword.length < 4)}
-                  size="sm"
+                  disabled={savingPassword || (isPasswordProtected && !profilePassword)}
                   className="w-full"
                 >
-                  {savingPassword ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Shield className="w-4 h-4 mr-2" />
-                      {isPasswordProtected ? 'Enable Password Protection' : 'Disable Password Protection'}
-                    </>
-                  )}
+                  <Save className="w-4 h-4 mr-2" />
+                  {savingPassword ? 'Saving...' : 'Save Password Settings'}
                 </Button>
               </div>
-
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Hide from Search Engines</Label>
-                  <p className="text-sm text-muted-foreground">
-                    Prevent your profile from appearing in search results
-                  </p>
-                </div>
-                <Switch />
-              </div>
-
-              <Button 
-                onClick={handleSavePrivacy}
-                disabled={saving}
-                className="gradient-primary text-primary-foreground"
-              >
-                <Save className="w-4 h-4 mr-2" />
-                {saving ? 'Saving...' : 'Save Privacy Settings'}
-              </Button>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </TabsContent>
 
         {/* SEO Tab */}
@@ -868,13 +474,7 @@ export default function DashboardSettingsPage({
             animate={{ opacity: 1, y: 0 }}
             className="glass-card p-6 max-w-2xl"
           >
-            <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
-              <Globe className="w-5 h-5 text-primary" />
-              SEO Settings
-            </h2>
-            <p className="text-muted-foreground text-sm mb-6">
-              Optimize how your profile appears in search results and social shares
-            </p>
+            <h2 className="text-lg font-semibold text-foreground mb-6">Search Engine Optimization</h2>
             
             <div className="space-y-6">
               <div>
@@ -884,9 +484,10 @@ export default function DashboardSettingsPage({
                   onChange={(e) => setSeoTitle(e.target.value)}
                   placeholder={profile?.display_name || profile?.username}
                   className="mt-2"
+                  maxLength={60}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {seoTitle.length}/60 characters recommended
+                  {seoTitle.length}/60 characters
                 </p>
               </div>
 
@@ -895,31 +496,35 @@ export default function DashboardSettingsPage({
                 <Textarea 
                   value={seoDescription}
                   onChange={(e) => setSeoDescription(e.target.value)}
-                  placeholder="A brief description of your profile for search engines..."
-                  className="mt-2"
-                  rows={3}
+                  placeholder="Describe your profile for search engines..."
+                  className="mt-2 min-h-[100px]"
+                  maxLength={160}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  {seoDescription.length}/160 characters recommended
+                  {seoDescription.length}/160 characters
                 </p>
               </div>
 
-              <div>
-                <Label>Social Share Image (OG Image)</Label>
-                <div className="mt-2 h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                  <div className="text-center">
-                    <Globe className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Upload an image (1200x630 recommended)
-                    </p>
-                  </div>
+              {/* Preview */}
+              <div className="p-4 bg-secondary rounded-lg">
+                <p className="text-sm font-medium text-foreground mb-1">Search Preview</p>
+                <div className="mt-3">
+                  <p className="text-blue-600 text-lg truncate">
+                    {seoTitle || profile?.display_name || profile?.username}
+                  </p>
+                  <p className="text-green-700 text-sm truncate">
+                    {window.location.origin}/{profile?.username}
+                  </p>
+                  <p className="text-muted-foreground text-sm line-clamp-2 mt-1">
+                    {seoDescription || `Check out ${profile?.display_name || profile?.username}'s links`}
+                  </p>
                 </div>
               </div>
 
               <Button 
                 onClick={handleSaveSEO}
                 disabled={saving}
-                className="gradient-primary text-primary-foreground"
+                className="w-full"
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save SEO Settings'}
@@ -941,16 +546,42 @@ export default function DashboardSettingsPage({
               <div className="space-y-4">
                 <div>
                   <Label>Email Address</Label>
-                  <div className="flex items-center gap-2 mt-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-foreground">{userEmail}</span>
+                  <div className="p-3 bg-secondary rounded-lg mt-2 text-sm">
+                    {userEmail}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-border">
-                  <Button variant="outline" onClick={() => setShowPasswordDialog(true)}>
+                <div>
+                  <Label>Account Password</Label>
+                  <Button 
+                    variant="outline" 
+                    className="w-full mt-2"
+                    onClick={() => setShowPasswordDialog(true)}
+                  >
                     <Key className="w-4 h-4 mr-2" />
                     Change Password
+                  </Button>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={handleExportData}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Export My Data
+                  </Button>
+                </div>
+
+                <div>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={handleDuplicateLayout}
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Layout Settings
                   </Button>
                 </div>
               </div>
@@ -960,85 +591,74 @@ export default function DashboardSettingsPage({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="glass-card p-6"
-            >
-              <h2 className="text-lg font-semibold text-foreground mb-6">Data & Export</h2>
-              
-              <div className="space-y-4">
-                <Button variant="outline" className="w-full justify-start" onClick={handleExportData}>
-                  <Download className="w-4 h-4 mr-2" />
-                  Export My Data
-                </Button>
-
-                <Button variant="outline" className="w-full justify-start" onClick={handleDuplicateLayout}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Duplicate Profile Layout
-                </Button>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
               className="glass-card p-6 border-destructive/20"
             >
               <h2 className="text-lg font-semibold text-destructive mb-6">Danger Zone</h2>
               
               <div className="space-y-4">
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete My Profile
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your 
-                        profile and remove all your data from our servers.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={handleDeleteProfile}
-                      >
+                <div>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Delete your profile and all associated links. This action cannot be undone.
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive" className="w-full">
+                        <Trash2 className="w-4 h-4 mr-2" />
                         Delete Profile
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Profile?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will permanently delete your profile "{profile?.username}" and all your links. 
+                          This action cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleDeleteProfile}
+                          className="bg-destructive text-destructive-foreground"
+                        >
+                          Delete Profile
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-destructive hover:text-destructive">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Delete Account
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will permanently delete your account and all associated data.
-                        This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={handleDeleteAccount}
-                      >
+                <div className="pt-4 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Delete your entire account including all data. Contact support to complete this request.
+                  </p>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full text-destructive hover:text-destructive">
+                        <LogOut className="w-4 h-4 mr-2" />
                         Delete Account
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Account?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will sign you out and submit a request to delete your account. 
+                          All your data will be permanently removed.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          onClick={handleDeleteAccount}
+                          className="bg-destructive text-destructive-foreground"
+                        >
+                          Delete Account
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
             </motion.div>
           </div>
@@ -1051,7 +671,7 @@ export default function DashboardSettingsPage({
           <DialogHeader>
             <DialogTitle>Change Password</DialogTitle>
             <DialogDescription>
-              Enter your new password below. Password must be at least 6 characters.
+              Enter a new password for your account
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1081,26 +701,14 @@ export default function DashboardSettingsPage({
               Cancel
             </Button>
             <Button 
-              onClick={handleChangePassword} 
+              onClick={handleChangePassword}
               disabled={changingPassword || !newPassword || !confirmPassword}
-              className="gradient-primary text-primary-foreground"
             >
               {changingPassword ? 'Changing...' : 'Change Password'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Custom Domain Setup Wizard */}
-      <DomainSetupWizard
-        open={showDomainDialog}
-        onOpenChange={setShowDomainDialog}
-        profileId={profile?.id || ''}
-        onAddDomain={async (domainName) => {
-          const result = await addDomain(domainName);
-          return result;
-        }}
-      />
     </div>
   );
 }
