@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart3,
@@ -9,7 +10,6 @@ import {
   Smartphone,
   Monitor,
   ArrowUpRight,
-  ArrowDownRight,
   Download,
   Calendar,
 } from 'lucide-react';
@@ -29,42 +29,208 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { supabase } from '@/integrations/supabase/client';
 
-const overviewStats = [
-  { label: 'Total Views', value: '1.2M', change: '+12.5%', trend: 'up', icon: Eye },
-  { label: 'Total Clicks', value: '3.4M', change: '+18.3%', trend: 'up', icon: MousePointerClick },
-  { label: 'Avg. CTR', value: '28.3%', change: '+2.1%', trend: 'up', icon: TrendingUp },
-  { label: 'Active Users', value: '11,234', change: '+5.7%', trend: 'up', icon: Users },
-];
+interface TopProfile {
+  rank: number;
+  name: string;
+  username: string;
+  views: number;
+  clicks: number;
+  ctr: number;
+}
 
-const topProfiles = [
-  { rank: 1, name: 'Sarah Johnson', username: '@sarahj', views: 125000, clicks: 45000, ctr: 36.0 },
-  { rank: 2, name: 'Mike Chen', username: '@mikechen', views: 89000, clicks: 32000, ctr: 35.9 },
-  { rank: 3, name: 'Emily Davis', username: '@emilyd', views: 62000, clicks: 21000, ctr: 33.8 },
-  { rank: 4, name: 'Alex Rivera', username: '@alexr', views: 48000, clicks: 15000, ctr: 31.2 },
-  { rank: 5, name: 'Jordan Lee', username: '@jordanl', views: 35000, clicks: 11000, ctr: 31.4 },
-  { rank: 6, name: 'Taylor Swift', username: '@taylor', views: 950000, clicks: 320000, ctr: 33.7 },
-  { rank: 7, name: 'Chris Brown', username: '@chrisb', views: 28000, clicks: 8500, ctr: 30.4 },
-  { rank: 8, name: 'Jessica Alba', username: '@jessicaa', views: 25000, clicks: 7200, ctr: 28.8 },
-];
+interface CountryData {
+  country: string;
+  flag: string;
+  views: number;
+  percentage: number;
+}
 
-const countryData = [
-  { country: 'United States', flag: '🇺🇸', views: 450000, percentage: 37.5 },
-  { country: 'United Kingdom', flag: '🇬🇧', views: 180000, percentage: 15.0 },
-  { country: 'Canada', flag: '🇨🇦', views: 120000, percentage: 10.0 },
-  { country: 'Germany', flag: '🇩🇪', views: 96000, percentage: 8.0 },
-  { country: 'France', flag: '🇫🇷', views: 84000, percentage: 7.0 },
-  { country: 'Australia', flag: '🇦🇺', views: 72000, percentage: 6.0 },
-  { country: 'Others', flag: '🌍', views: 198000, percentage: 16.5 },
-];
+interface DeviceData {
+  device: string;
+  icon: typeof Smartphone;
+  percentage: number;
+  color: string;
+}
 
-const deviceData = [
-  { device: 'Mobile', icon: Smartphone, percentage: 68, color: 'bg-primary' },
-  { device: 'Desktop', icon: Monitor, percentage: 28, color: 'bg-accent' },
-  { device: 'Tablet', icon: Monitor, percentage: 4, color: 'bg-muted' },
-];
+const countryFlags: Record<string, string> = {
+  'United States': '🇺🇸',
+  'United Kingdom': '🇬🇧',
+  'Canada': '🇨🇦',
+  'Germany': '🇩🇪',
+  'France': '🇫🇷',
+  'Australia': '🇦🇺',
+  'India': '🇮🇳',
+  'Brazil': '🇧🇷',
+  'Japan': '🇯🇵',
+  'Others': '🌍',
+};
 
 export default function AdminAnalyticsPage() {
+  const [loading, setLoading] = useState(true);
+  const [totalViews, setTotalViews] = useState(0);
+  const [totalClicks, setTotalClicks] = useState(0);
+  const [activeUsers, setActiveUsers] = useState(0);
+  const [topProfiles, setTopProfiles] = useState<TopProfile[]>([]);
+  const [countryData, setCountryData] = useState<CountryData[]>([]);
+  const [deviceData, setDeviceData] = useState<DeviceData[]>([]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const fetchAnalytics = async () => {
+    try {
+      // Fetch total page views
+      const { data: viewsData } = await supabase
+        .from('analytics_events')
+        .select('id')
+        .eq('event_type', 'page_view');
+
+      // Fetch total clicks
+      const { data: clicksData } = await supabase
+        .from('analytics_events')
+        .select('id')
+        .eq('event_type', 'link_click');
+
+      // Fetch active users count
+      const { count: usersCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_suspended', false);
+
+      setTotalViews(viewsData?.length || 0);
+      setTotalClicks(clicksData?.length || 0);
+      setActiveUsers(usersCount || 0);
+
+      // Fetch top profiles by views
+      const { data: profilesData } = await supabase
+        .from('link_profiles')
+        .select('id, username, display_name, total_views')
+        .order('total_views', { ascending: false })
+        .limit(8);
+
+      if (profilesData) {
+        const profilesWithClicks = await Promise.all(
+          profilesData.map(async (profile, index) => {
+            const { count: clickCount } = await supabase
+              .from('analytics_events')
+              .select('*', { count: 'exact', head: true })
+              .eq('profile_id', profile.id)
+              .eq('event_type', 'link_click');
+
+            const clicks = clickCount || 0;
+            const views = profile.total_views || 0;
+            const ctr = views > 0 ? (clicks / views) * 100 : 0;
+
+            return {
+              rank: index + 1,
+              name: profile.display_name || profile.username,
+              username: `@${profile.username}`,
+              views: views,
+              clicks: clicks,
+              ctr: Math.round(ctr * 10) / 10,
+            };
+          })
+        );
+        setTopProfiles(profilesWithClicks);
+      }
+
+      // Fetch country data
+      const { data: countryAnalytics } = await supabase
+        .from('analytics_events')
+        .select('country')
+        .not('country', 'is', null);
+
+      if (countryAnalytics) {
+        const countryCounts: Record<string, number> = {};
+        countryAnalytics.forEach((event) => {
+          const country = event.country || 'Unknown';
+          countryCounts[country] = (countryCounts[country] || 0) + 1;
+        });
+
+        const totalCountryViews = Object.values(countryCounts).reduce((a, b) => a + b, 0);
+        const sortedCountries = Object.entries(countryCounts)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 6)
+          .map(([country, views]) => ({
+            country,
+            flag: countryFlags[country] || '🌍',
+            views,
+            percentage: totalCountryViews > 0 ? Math.round((views / totalCountryViews) * 100) : 0,
+          }));
+
+        // Add "Others" if there are more countries
+        if (Object.keys(countryCounts).length > 6) {
+          const topViews = sortedCountries.reduce((a, b) => a + b.views, 0);
+          sortedCountries.push({
+            country: 'Others',
+            flag: '🌍',
+            views: totalCountryViews - topViews,
+            percentage: Math.round(((totalCountryViews - topViews) / totalCountryViews) * 100),
+          });
+        }
+
+        setCountryData(sortedCountries);
+      }
+
+      // Fetch device data
+      const { data: deviceAnalytics } = await supabase
+        .from('analytics_events')
+        .select('device_type')
+        .not('device_type', 'is', null);
+
+      if (deviceAnalytics) {
+        const deviceCounts: Record<string, number> = { Mobile: 0, Desktop: 0, Tablet: 0 };
+        deviceAnalytics.forEach((event) => {
+          const device = event.device_type || 'Desktop';
+          if (device.toLowerCase().includes('mobile')) {
+            deviceCounts['Mobile']++;
+          } else if (device.toLowerCase().includes('tablet')) {
+            deviceCounts['Tablet']++;
+          } else {
+            deviceCounts['Desktop']++;
+          }
+        });
+
+        const totalDevices = Object.values(deviceCounts).reduce((a, b) => a + b, 0);
+        setDeviceData([
+          { device: 'Mobile', icon: Smartphone, percentage: totalDevices > 0 ? Math.round((deviceCounts['Mobile'] / totalDevices) * 100) : 0, color: 'bg-primary' },
+          { device: 'Desktop', icon: Monitor, percentage: totalDevices > 0 ? Math.round((deviceCounts['Desktop'] / totalDevices) * 100) : 0, color: 'bg-accent' },
+          { device: 'Tablet', icon: Monitor, percentage: totalDevices > 0 ? Math.round((deviceCounts['Tablet'] / totalDevices) * 100) : 0, color: 'bg-muted' },
+        ]);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
+  const avgCtr = totalViews > 0 ? Math.round((totalClicks / totalViews) * 1000) / 10 : 0;
+
+  const overviewStats = [
+    { label: 'Total Views', value: formatNumber(totalViews), change: '+0%', trend: 'up', icon: Eye },
+    { label: 'Total Clicks', value: formatNumber(totalClicks), change: '+0%', trend: 'up', icon: MousePointerClick },
+    { label: 'Avg. CTR', value: `${avgCtr}%`, change: '+0%', trend: 'up', icon: TrendingUp },
+    { label: 'Active Users', value: formatNumber(activeUsers), change: '+0%', trend: 'up', icon: Users },
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -113,12 +279,8 @@ export default function AdminAnalyticsPage() {
               <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
                 <stat.icon className="w-5 h-5 text-primary" />
               </div>
-              <div className={`flex items-center gap-1 text-sm ${stat.trend === 'up' ? 'text-success' : 'text-destructive'}`}>
-                {stat.trend === 'up' ? (
-                  <ArrowUpRight className="w-4 h-4" />
-                ) : (
-                  <ArrowDownRight className="w-4 h-4" />
-                )}
+              <div className={`flex items-center gap-1 text-sm text-success`}>
+                <ArrowUpRight className="w-4 h-4" />
                 {stat.change}
               </div>
             </div>
@@ -143,23 +305,27 @@ export default function AdminAnalyticsPage() {
             </h2>
           </div>
           <div className="p-6 space-y-4">
-            {countryData.map((country) => (
-              <div key={country.country} className="flex items-center gap-3">
-                <span className="text-xl">{country.flag}</span>
-                <div className="flex-1">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-sm font-medium text-foreground">{country.country}</span>
-                    <span className="text-sm text-muted-foreground">{country.percentage}%</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div 
-                      className="h-full bg-primary rounded-full transition-all"
-                      style={{ width: `${country.percentage}%` }}
-                    />
+            {countryData.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">No country data available</p>
+            ) : (
+              countryData.map((country) => (
+                <div key={country.country} className="flex items-center gap-3">
+                  <span className="text-xl">{country.flag}</span>
+                  <div className="flex-1">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-sm font-medium text-foreground">{country.country}</span>
+                      <span className="text-sm text-muted-foreground">{country.percentage}%</span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-primary rounded-full transition-all"
+                        style={{ width: `${country.percentage}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -236,7 +402,6 @@ export default function AdminAnalyticsPage() {
       >
         <div className="p-6 border-b border-border flex items-center justify-between">
           <h2 className="text-lg font-semibold text-foreground">Top Performing Profiles</h2>
-          <Button variant="ghost" size="sm">View All</Button>
         </div>
         <Table>
           <TableHeader>
@@ -249,37 +414,45 @@ export default function AdminAnalyticsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {topProfiles.map((profile) => (
-              <TableRow key={profile.rank}>
-                <TableCell>
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                    profile.rank <= 3 
-                      ? 'gradient-primary text-primary-foreground' 
-                      : 'bg-secondary text-muted-foreground'
-                  }`}>
-                    {profile.rank}
-                  </span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary">
-                        {profile.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{profile.name}</p>
-                      <p className="text-sm text-muted-foreground">{profile.username}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell className="text-right font-medium">{profile.views.toLocaleString()}</TableCell>
-                <TableCell className="text-right font-medium">{profile.clicks.toLocaleString()}</TableCell>
-                <TableCell className="text-right">
-                  <span className="text-success font-medium">{profile.ctr}%</span>
+            {topProfiles.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  No profiles found
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              topProfiles.map((profile) => (
+                <TableRow key={profile.rank}>
+                  <TableCell>
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                      profile.rank <= 3 
+                        ? 'gradient-primary text-primary-foreground' 
+                        : 'bg-secondary text-muted-foreground'
+                    }`}>
+                      {profile.rank}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-sm font-medium text-primary">
+                          {profile.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{profile.name}</p>
+                        <p className="text-sm text-muted-foreground">{profile.username}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right font-medium">{profile.views.toLocaleString()}</TableCell>
+                  <TableCell className="text-right font-medium">{profile.clicks.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">
+                    <span className="text-success font-medium">{profile.ctr}%</span>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </motion.div>
