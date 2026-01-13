@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -15,8 +15,6 @@ import {
   Trash2,
   Download,
   RefreshCw,
-  CheckCircle,
-  XCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,8 +62,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
-interface MockUser {
+interface User {
   id: string;
   name: string;
   email: string;
@@ -79,122 +78,97 @@ interface MockUser {
   lastLogin: string;
 }
 
-const initialMockUsers: MockUser[] = [
-  { 
-    id: '1', 
-    name: 'Sarah Johnson', 
-    email: 'sarah@example.com', 
-    username: 'sarahj',
-    role: 'client',
-    status: 'active',
-    verified: true,
-    views: 125000,
-    clicks: 45000,
-    createdAt: '2025-10-15',
-    lastLogin: '2026-01-05',
-  },
-  { 
-    id: '2', 
-    name: 'Mike Chen', 
-    email: 'mike@example.com', 
-    username: 'mikechen',
-    role: 'client',
-    status: 'active',
-    verified: true,
-    views: 89000,
-    clicks: 32000,
-    createdAt: '2025-11-02',
-    lastLogin: '2026-01-04',
-  },
-  { 
-    id: '3', 
-    name: 'Emily Davis', 
-    email: 'emily@example.com', 
-    username: 'emilyd',
-    role: 'client',
-    status: 'suspended',
-    verified: false,
-    views: 62000,
-    clicks: 21000,
-    createdAt: '2025-11-20',
-    lastLogin: '2025-12-28',
-  },
-  { 
-    id: '4', 
-    name: 'Alex Rivera', 
-    email: 'alex@example.com', 
-    username: 'alexr',
-    role: 'admin',
-    status: 'active',
-    verified: true,
-    views: 48000,
-    clicks: 15000,
-    createdAt: '2025-09-10',
-    lastLogin: '2026-01-05',
-  },
-  { 
-    id: '5', 
-    name: 'Jordan Lee', 
-    email: 'jordan@example.com', 
-    username: 'jordanl',
-    role: 'client',
-    status: 'active',
-    verified: true,
-    views: 35000,
-    clicks: 11000,
-    createdAt: '2025-12-01',
-    lastLogin: '2026-01-03',
-  },
-  { 
-    id: '6', 
-    name: 'Taylor Swift', 
-    email: 'taylor@example.com', 
-    username: 'taylor',
-    role: 'client',
-    status: 'active',
-    verified: true,
-    views: 950000,
-    clicks: 320000,
-    createdAt: '2025-08-15',
-    lastLogin: '2026-01-06',
-  },
-  { 
-    id: '7', 
-    name: 'James Wilson', 
-    email: 'james@example.com', 
-    username: 'jamesw',
-    role: 'client',
-    status: 'pending',
-    verified: false,
-    views: 0,
-    clicks: 0,
-    createdAt: '2026-01-05',
-    lastLogin: '2026-01-05',
-  },
-];
-
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<MockUser[]>(initialMockUsers);
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Dialog states
-  const [showAddUserDialog, setShowAddUserDialog] = useState(false);
   const [showChangeRoleDialog, setShowChangeRoleDialog] = useState(false);
   const [showEmailDialog, setShowEmailDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showSuspendDialog, setShowSuspendDialog] = useState(false);
   
   // Form states
-  const [newUserName, setNewUserName] = useState('');
-  const [newUserEmail, setNewUserEmail] = useState('');
-  const [newUserRole, setNewUserRole] = useState('client');
   const [selectedRole, setSelectedRole] = useState('client');
   const [emailSubject, setEmailSubject] = useState('');
   const [emailBody, setEmailBody] = useState('');
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      // Fetch all profiles with their roles
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (profilesError) throw profilesError;
+
+      // Fetch all user roles
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      // Fetch link profiles for usernames and views
+      const { data: linkProfilesData } = await supabase
+        .from('link_profiles')
+        .select('user_id, username, total_views');
+
+      // Map roles by user_id
+      const rolesMap: Record<string, string> = {};
+      rolesData?.forEach((r) => {
+        // Prioritize higher roles
+        const currentRole = rolesMap[r.user_id];
+        if (!currentRole || 
+            (r.role === 'super_admin') || 
+            (r.role === 'admin' && currentRole === 'client')) {
+          rolesMap[r.user_id] = r.role;
+        }
+      });
+
+      // Map link profiles by user_id
+      const linkProfilesMap: Record<string, { username: string; views: number }> = {};
+      linkProfilesData?.forEach((lp) => {
+        linkProfilesMap[lp.user_id] = {
+          username: lp.username,
+          views: lp.total_views || 0,
+        };
+      });
+
+      // Combine data
+      const usersWithData: User[] = (profilesData || []).map((profile) => {
+        const linkProfile = linkProfilesMap[profile.id];
+        return {
+          id: profile.id,
+          name: profile.full_name || profile.email,
+          email: profile.email,
+          username: linkProfile?.username || profile.email.split('@')[0],
+          role: rolesMap[profile.id] || 'client',
+          status: profile.is_suspended ? 'suspended' : 'active',
+          verified: profile.is_verified || false,
+          views: linkProfile?.views || 0,
+          clicks: 0, // Would need analytics query
+          createdAt: profile.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A',
+          lastLogin: profile.last_login_at ? new Date(profile.last_login_at).toLocaleDateString() : 'Never',
+        };
+      });
+
+      setUsers(usersWithData);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast.error('Failed to load users');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -243,34 +217,6 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleAddUser = () => {
-    if (!newUserName.trim() || !newUserEmail.trim()) {
-      toast.error('Please fill in all fields');
-      return;
-    }
-
-    const newUser: MockUser = {
-      id: Date.now().toString(),
-      name: newUserName,
-      email: newUserEmail,
-      username: newUserEmail.split('@')[0],
-      role: newUserRole,
-      status: 'pending',
-      verified: false,
-      views: 0,
-      clicks: 0,
-      createdAt: new Date().toISOString().split('T')[0],
-      lastLogin: new Date().toISOString().split('T')[0],
-    };
-
-    setUsers([newUser, ...users]);
-    toast.success(`User ${newUserName} created successfully!`);
-    setShowAddUserDialog(false);
-    setNewUserName('');
-    setNewUserEmail('');
-    setNewUserRole('client');
-  };
-
   const handleExport = () => {
     const exportData = filteredUsers.map(u => ({
       name: u.name,
@@ -279,7 +225,6 @@ export default function AdminUsersPage() {
       role: u.role,
       status: u.status,
       views: u.views,
-      clicks: u.clicks,
       createdAt: u.createdAt,
       lastLogin: u.lastLogin,
     }));
@@ -303,45 +248,69 @@ export default function AdminUsersPage() {
       return;
     }
 
-    toast.success(`Email sent to ${selectedUsers.length} users`);
+    toast.success(`Email would be sent to ${selectedUsers.length} users (not implemented)`);
     setShowEmailDialog(false);
     setEmailSubject('');
     setEmailBody('');
     setSelectedUsers([]);
   };
 
-  const handleChangeRole = (userId?: string) => {
+  const handleChangeRole = async (userId?: string) => {
     const targetIds = userId ? [userId] : selectedUsers;
     
-    setUsers(users.map(u => 
-      targetIds.includes(u.id) ? { ...u, role: selectedRole } : u
-    ));
+    try {
+      for (const id of targetIds) {
+        // Delete existing roles
+        await supabase.from('user_roles').delete().eq('user_id', id);
+        
+        // Insert new role
+        await supabase.from('user_roles').insert({
+          user_id: id,
+          role: selectedRole as 'super_admin' | 'admin' | 'client',
+        });
+      }
 
-    toast.success(`Role changed to ${selectedRole} for ${targetIds.length} user(s)`);
-    setShowChangeRoleDialog(false);
-    setSelectedUsers([]);
-    setTargetUserId(null);
+      toast.success(`Role changed to ${selectedRole} for ${targetIds.length} user(s)`);
+      setShowChangeRoleDialog(false);
+      setSelectedUsers([]);
+      setTargetUserId(null);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error changing role:', error);
+      toast.error('Failed to change role');
+    }
   };
 
-  const handleSuspendUser = (userId?: string) => {
+  const handleSuspendUser = async (userId?: string) => {
     const targetIds = userId ? [userId] : selectedUsers;
     
-    setUsers(users.map(u => 
-      targetIds.includes(u.id) ? { ...u, status: u.status === 'suspended' ? 'active' : 'suspended' } : u
-    ));
+    try {
+      for (const id of targetIds) {
+        const user = users.find(u => u.id === id);
+        const newStatus = user?.status === 'suspended' ? false : true;
+        
+        await supabase
+          .from('profiles')
+          .update({ is_suspended: newStatus })
+          .eq('id', id);
+      }
 
-    const action = users.find(u => u.id === targetIds[0])?.status === 'suspended' ? 'activated' : 'suspended';
-    toast.success(`${targetIds.length} user(s) ${action}`);
-    setShowSuspendDialog(false);
-    setSelectedUsers([]);
-    setTargetUserId(null);
+      const action = users.find(u => u.id === targetIds[0])?.status === 'suspended' ? 'activated' : 'suspended';
+      toast.success(`${targetIds.length} user(s) ${action}`);
+      setShowSuspendDialog(false);
+      setSelectedUsers([]);
+      setTargetUserId(null);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      toast.error('Failed to update user');
+    }
   };
 
-  const handleDeleteUser = (userId?: string) => {
+  const handleDeleteUser = async (userId?: string) => {
     const targetIds = userId ? [userId] : selectedUsers;
     
-    setUsers(users.filter(u => !targetIds.includes(u.id)));
-    toast.success(`${targetIds.length} user(s) deleted`);
+    toast.error('User deletion requires Supabase admin access');
     setShowDeleteDialog(false);
     setSelectedUsers([]);
     setTargetUserId(null);
@@ -366,6 +335,17 @@ export default function AdminUsersPage() {
     }
   };
 
+  const activeCount = users.filter(u => u.status === 'active').length;
+  const suspendedCount = users.filter(u => u.status === 'suspended').length;
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -385,12 +365,9 @@ export default function AdminUsersPage() {
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
-          <Button 
-            className="gradient-primary text-primary-foreground"
-            onClick={() => setShowAddUserDialog(true)}
-          >
-            <UserPlus className="w-4 h-4 mr-2" />
-            Add User
+          <Button variant="outline" onClick={fetchUsers}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </Button>
         </div>
       </div>
@@ -399,9 +376,9 @@ export default function AdminUsersPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Total Users', value: users.length.toLocaleString(), icon: Users, color: 'text-primary' },
-          { label: 'Active Users', value: users.filter(u => u.status === 'active').length.toLocaleString(), icon: ShieldCheck, color: 'text-success' },
-          { label: 'Suspended', value: users.filter(u => u.status === 'suspended').length.toLocaleString(), icon: ShieldX, color: 'text-destructive' },
-          { label: 'Pending', value: users.filter(u => u.status === 'pending').length.toLocaleString(), icon: RefreshCw, color: 'text-warning' },
+          { label: 'Active Users', value: activeCount.toLocaleString(), icon: ShieldCheck, color: 'text-success' },
+          { label: 'Suspended', value: suspendedCount.toLocaleString(), icon: ShieldX, color: 'text-destructive' },
+          { label: 'Admins', value: users.filter(u => u.role === 'admin' || u.role === 'super_admin').length.toLocaleString(), icon: Shield, color: 'text-warning' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -455,13 +432,8 @@ export default function AdminUsersPage() {
                 <SelectItem value="all">All Status</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="suspended">Suspended</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
           </div>
         </div>
 
@@ -512,89 +484,93 @@ export default function AdminUsersPage() {
               <TableHead>Role</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Views</TableHead>
-              <TableHead className="text-right">Clicks</TableHead>
               <TableHead>Last Login</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.id} className="hover:bg-secondary/50">
-                <TableCell>
-                  <Checkbox 
-                    checked={selectedUsers.includes(user.id)}
-                    onCheckedChange={() => toggleSelectUser(user.id)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <span className="text-sm font-medium text-primary">
-                        {user.name.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-foreground">{user.name}</p>
-                        {user.verified && (
-                          <ShieldCheck className="w-4 h-4 text-primary" />
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">@{user.username}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{getStatusBadge(user.status)}</TableCell>
-                <TableCell className="text-right font-medium">
-                  {user.views.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-right font-medium">
-                  {user.clicks.toLocaleString()}
-                </TableCell>
-                <TableCell className="text-muted-foreground">
-                  {user.lastLogin}
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => window.open(`/${user.username}`, '_blank')}>
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openUserAction(user.id, 'role')}>
-                        <Shield className="w-4 h-4 mr-2" />
-                        Change Role
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => openUserAction(user.id, 'email')}>
-                        <Mail className="w-4 h-4 mr-2" />
-                        Send Email
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        className="text-warning"
-                        onClick={() => openUserAction(user.id, 'suspend')}
-                      >
-                        <Ban className="w-4 h-4 mr-2" />
-                        {user.status === 'suspended' ? 'Unsuspend User' : 'Suspend User'}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        className="text-destructive"
-                        onClick={() => openUserAction(user.id, 'delete')}
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete User
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+            {filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  No users found
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              filteredUsers.map((user) => (
+                <TableRow key={user.id} className="hover:bg-secondary/50">
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedUsers.includes(user.id)}
+                      onCheckedChange={() => toggleSelectUser(user.id)}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <span className="text-sm font-medium text-primary">
+                          {user.name.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-foreground">{user.name}</p>
+                          {user.verified && (
+                            <ShieldCheck className="w-4 h-4 text-primary" />
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">@{user.username}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  <TableCell>{getStatusBadge(user.status)}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {user.views.toLocaleString()}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {user.lastLogin}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => window.open(`/${user.username}`, '_blank')}>
+                          <Eye className="w-4 h-4 mr-2" />
+                          View Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openUserAction(user.id, 'role')}>
+                          <Shield className="w-4 h-4 mr-2" />
+                          Change Role
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => openUserAction(user.id, 'email')}>
+                          <Mail className="w-4 h-4 mr-2" />
+                          Send Email
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem 
+                          className="text-warning"
+                          onClick={() => openUserAction(user.id, 'suspend')}
+                        >
+                          <Ban className="w-4 h-4 mr-2" />
+                          {user.status === 'suspended' ? 'Unsuspend User' : 'Suspend User'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="text-destructive"
+                          onClick={() => openUserAction(user.id, 'delete')}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete User
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
 
@@ -603,67 +579,8 @@ export default function AdminUsersPage() {
           <p className="text-sm text-muted-foreground">
             Showing {filteredUsers.length} of {users.length} users
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
-          </div>
         </div>
       </motion.div>
-
-      {/* Add User Dialog */}
-      <Dialog open={showAddUserDialog} onOpenChange={setShowAddUserDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
-            <DialogDescription>
-              Create a new user account. They will receive an email to set their password.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Full Name</Label>
-              <Input 
-                value={newUserName}
-                onChange={(e) => setNewUserName(e.target.value)}
-                placeholder="John Doe"
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label>Email Address</Label>
-              <Input 
-                type="email"
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-                placeholder="john@example.com"
-                className="mt-2"
-              />
-            </div>
-            <div>
-              <Label>Role</Label>
-              <Select value={newUserRole} onValueChange={setNewUserRole}>
-                <SelectTrigger className="mt-2">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="client">Client</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="super_admin">Super Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddUserDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddUser} className="gradient-primary text-primary-foreground">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add User
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Change Role Dialog */}
       <Dialog open={showChangeRoleDialog} onOpenChange={setShowChangeRoleDialog}>

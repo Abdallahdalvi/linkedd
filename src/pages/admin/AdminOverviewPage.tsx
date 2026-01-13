@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Users,
@@ -22,59 +23,195 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
-const stats = [
-  { 
-    label: 'Total Users', 
-    value: '12,847', 
-    change: '+12.5%', 
-    trend: 'up',
-    icon: Users,
-    color: 'text-primary'
-  },
-  { 
-    label: 'Profile Views', 
-    value: '1.2M', 
-    change: '+8.3%', 
-    trend: 'up',
-    icon: Eye,
-    color: 'text-success'
-  },
-  { 
-    label: 'Link Clicks', 
-    value: '3.4M', 
-    change: '+15.2%', 
-    trend: 'up',
-    icon: MousePointerClick,
-    color: 'text-accent'
-  },
-  { 
-    label: 'Avg. CTR', 
-    value: '28.3%', 
-    change: '-2.1%', 
-    trend: 'down',
-    icon: TrendingUp,
-    color: 'text-warning'
-  },
-];
+interface Stats {
+  totalUsers: number;
+  profileViews: number;
+  linkClicks: number;
+  avgCtr: number;
+}
 
-const recentUsers = [
-  { id: 1, name: 'Sarah Johnson', email: 'sarah@example.com', username: '@sarahj', views: 12500, status: 'active' },
-  { id: 2, name: 'Mike Chen', email: 'mike@example.com', username: '@mikechen', views: 8900, status: 'active' },
-  { id: 3, name: 'Emily Davis', email: 'emily@example.com', username: '@emilyd', views: 6200, status: 'suspended' },
-  { id: 4, name: 'Alex Rivera', email: 'alex@example.com', username: '@alexr', views: 4800, status: 'active' },
-  { id: 5, name: 'Jordan Lee', email: 'jordan@example.com', username: '@jordanl', views: 3500, status: 'active' },
-];
+interface RecentUser {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  views: number;
+  status: string;
+}
 
-const topProfiles = [
-  { rank: 1, name: 'Sarah Johnson', username: '@sarahj', views: 125000, clicks: 45000, ctr: 36 },
-  { rank: 2, name: 'Mike Chen', username: '@mikechen', views: 89000, clicks: 32000, ctr: 36 },
-  { rank: 3, name: 'Emily Davis', username: '@emilyd', views: 62000, clicks: 21000, ctr: 34 },
-  { rank: 4, name: 'Alex Rivera', username: '@alexr', views: 48000, clicks: 15000, ctr: 31 },
-  { rank: 5, name: 'Jordan Lee', username: '@jordanl', views: 35000, clicks: 11000, ctr: 31 },
-];
+interface TopProfile {
+  rank: number;
+  name: string;
+  username: string;
+  views: number;
+  clicks: number;
+  ctr: number;
+}
 
 export default function AdminOverviewPage() {
+  const [stats, setStats] = useState<Stats>({
+    totalUsers: 0,
+    profileViews: 0,
+    linkClicks: 0,
+    avgCtr: 0,
+  });
+  const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
+  const [topProfiles, setTopProfiles] = useState<TopProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      // Fetch total users count
+      const { count: usersCount } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+
+      // Fetch total profile views
+      const { data: viewsData } = await supabase
+        .from('analytics_events')
+        .select('id')
+        .eq('event_type', 'page_view');
+
+      // Fetch total link clicks
+      const { data: clicksData } = await supabase
+        .from('analytics_events')
+        .select('id')
+        .eq('event_type', 'link_click');
+
+      const totalViews = viewsData?.length || 0;
+      const totalClicks = clicksData?.length || 0;
+      const avgCtr = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0;
+
+      setStats({
+        totalUsers: usersCount || 0,
+        profileViews: totalViews,
+        linkClicks: totalClicks,
+        avgCtr: Math.round(avgCtr * 10) / 10,
+      });
+
+      // Fetch recent users with their link profiles
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, is_suspended, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (profilesData) {
+        const recentUsersWithProfiles = await Promise.all(
+          profilesData.map(async (profile) => {
+            const { data: linkProfile } = await supabase
+              .from('link_profiles')
+              .select('username, total_views')
+              .eq('user_id', profile.id)
+              .maybeSingle();
+
+            return {
+              id: profile.id,
+              name: profile.full_name || profile.email,
+              email: profile.email,
+              username: linkProfile?.username ? `@${linkProfile.username}` : 'No profile',
+              views: linkProfile?.total_views || 0,
+              status: profile.is_suspended ? 'suspended' : 'active',
+            };
+          })
+        );
+        setRecentUsers(recentUsersWithProfiles);
+      }
+
+      // Fetch top profiles by views
+      const { data: topProfilesData } = await supabase
+        .from('link_profiles')
+        .select('id, username, display_name, total_views')
+        .order('total_views', { ascending: false })
+        .limit(5);
+
+      if (topProfilesData) {
+        const topProfilesWithClicks = await Promise.all(
+          topProfilesData.map(async (profile, index) => {
+            const { count: clickCount } = await supabase
+              .from('analytics_events')
+              .select('*', { count: 'exact', head: true })
+              .eq('profile_id', profile.id)
+              .eq('event_type', 'link_click');
+
+            const clicks = clickCount || 0;
+            const views = profile.total_views || 0;
+            const ctr = views > 0 ? (clicks / views) * 100 : 0;
+
+            return {
+              rank: index + 1,
+              name: profile.display_name || profile.username,
+              username: `@${profile.username}`,
+              views: views,
+              clicks: clicks,
+              ctr: Math.round(ctr * 10) / 10,
+            };
+          })
+        );
+        setTopProfiles(topProfilesWithClicks);
+      }
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
+  const statsDisplay = [
+    { 
+      label: 'Total Users', 
+      value: formatNumber(stats.totalUsers), 
+      change: '+0%', 
+      trend: 'up',
+      icon: Users,
+      color: 'text-primary'
+    },
+    { 
+      label: 'Profile Views', 
+      value: formatNumber(stats.profileViews), 
+      change: '+0%', 
+      trend: 'up',
+      icon: Eye,
+      color: 'text-success'
+    },
+    { 
+      label: 'Link Clicks', 
+      value: formatNumber(stats.linkClicks), 
+      change: '+0%', 
+      trend: 'up',
+      icon: MousePointerClick,
+      color: 'text-accent'
+    },
+    { 
+      label: 'Avg. CTR', 
+      value: `${stats.avgCtr}%`, 
+      change: '+0%', 
+      trend: 'up',
+      icon: TrendingUp,
+      color: 'text-warning'
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -102,7 +239,7 @@ export default function AdminOverviewPage() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {stats.map((stat, i) => (
+        {statsDisplay.map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
@@ -144,42 +281,48 @@ export default function AdminOverviewPage() {
             </Link>
           </div>
           <div className="divide-y divide-border">
-            {recentUsers.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <span className="text-sm font-medium text-primary">
-                      {user.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">{user.name}</p>
-                    <p className="text-sm text-muted-foreground">{user.username}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    user.status === 'active' 
-                      ? 'bg-success/10 text-success' 
-                      : 'bg-destructive/10 text-destructive'
-                  }`}>
-                    {user.status}
-                  </span>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>View Profile</DropdownMenuItem>
-                      <DropdownMenuItem>Edit User</DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive">Suspend</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+            {recentUsers.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground">
+                No users found
               </div>
-            ))}
+            ) : (
+              recentUsers.map((user) => (
+                <div key={user.id} className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-sm font-medium text-primary">
+                        {user.name.charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">{user.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      user.status === 'active' 
+                        ? 'bg-success/10 text-success' 
+                        : 'bg-destructive/10 text-destructive'
+                    }`}>
+                      {user.status}
+                    </span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>View Profile</DropdownMenuItem>
+                        <DropdownMenuItem>Edit User</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive">Suspend</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </motion.div>
 
@@ -197,27 +340,33 @@ export default function AdminOverviewPage() {
             </Link>
           </div>
           <div className="divide-y divide-border">
-            {topProfiles.map((profile) => (
-              <div key={profile.rank} className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
-                    profile.rank <= 3 
-                      ? 'gradient-primary text-primary-foreground' 
-                      : 'bg-secondary text-muted-foreground'
-                  }`}>
-                    {profile.rank}
-                  </span>
-                  <div>
-                    <p className="font-medium text-foreground">{profile.name}</p>
-                    <p className="text-sm text-muted-foreground">{profile.username}</p>
+            {topProfiles.length === 0 ? (
+              <div className="p-6 text-center text-muted-foreground">
+                No profiles found
+              </div>
+            ) : (
+              topProfiles.map((profile) => (
+                <div key={profile.rank} className="flex items-center justify-between p-4 hover:bg-secondary/50 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${
+                      profile.rank <= 3 
+                        ? 'gradient-primary text-primary-foreground' 
+                        : 'bg-secondary text-muted-foreground'
+                    }`}>
+                      {profile.rank}
+                    </span>
+                    <div>
+                      <p className="font-medium text-foreground">{profile.name}</p>
+                      <p className="text-sm text-muted-foreground">{profile.username}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-medium text-foreground">{formatNumber(profile.views)} views</p>
+                    <p className="text-sm text-success">{profile.ctr}% CTR</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium text-foreground">{(profile.views / 1000).toFixed(0)}K views</p>
-                  <p className="text-sm text-success">{profile.ctr}% CTR</p>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </motion.div>
       </div>

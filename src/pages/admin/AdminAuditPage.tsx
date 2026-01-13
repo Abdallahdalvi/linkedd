@@ -1,9 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
   Search,
-  Filter,
   Download,
   Calendar,
   User,
@@ -35,89 +34,19 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-const auditLogs = [
-  { 
-    id: '1',
-    action: 'user_login',
-    actor: 'admin@linkbio.com',
-    actorRole: 'super_admin',
-    target: null,
-    details: 'Successful login from 192.168.1.1',
-    timestamp: '2026-01-06 14:32:15',
-    ipAddress: '192.168.1.1',
-  },
-  { 
-    id: '2',
-    action: 'user_suspended',
-    actor: 'admin@linkbio.com',
-    actorRole: 'super_admin',
-    target: '@spammer123',
-    details: 'User suspended for policy violation',
-    timestamp: '2026-01-06 14:28:00',
-    ipAddress: '192.168.1.1',
-  },
-  { 
-    id: '3',
-    action: 'block_deleted',
-    actor: 'moderator@linkbio.com',
-    actorRole: 'admin',
-    target: '@fakeprofile',
-    details: 'Malicious link block removed',
-    timestamp: '2026-01-06 13:45:30',
-    ipAddress: '192.168.1.50',
-  },
-  { 
-    id: '4',
-    action: 'settings_updated',
-    actor: 'admin@linkbio.com',
-    actorRole: 'super_admin',
-    target: 'Design System',
-    details: 'Updated global color palette',
-    timestamp: '2026-01-06 12:15:00',
-    ipAddress: '192.168.1.1',
-  },
-  { 
-    id: '5',
-    action: 'user_created',
-    actor: 'admin@linkbio.com',
-    actorRole: 'super_admin',
-    target: '@newadmin',
-    details: 'Created new admin user',
-    timestamp: '2026-01-06 11:00:00',
-    ipAddress: '192.168.1.1',
-  },
-  { 
-    id: '6',
-    action: 'profile_viewed',
-    actor: 'moderator@linkbio.com',
-    actorRole: 'admin',
-    target: '@suspicious_user',
-    details: 'Reviewed profile for moderation',
-    timestamp: '2026-01-06 10:30:00',
-    ipAddress: '192.168.1.50',
-  },
-  { 
-    id: '7',
-    action: 'user_logout',
-    actor: 'moderator@linkbio.com',
-    actorRole: 'admin',
-    target: null,
-    details: 'Session ended',
-    timestamp: '2026-01-05 18:00:00',
-    ipAddress: '192.168.1.50',
-  },
-  { 
-    id: '8',
-    action: 'role_changed',
-    actor: 'admin@linkbio.com',
-    actorRole: 'super_admin',
-    target: '@newadmin',
-    details: 'Role changed from client to admin',
-    timestamp: '2026-01-05 15:30:00',
-    ipAddress: '192.168.1.1',
-  },
-];
+interface AuditLog {
+  id: string;
+  action: string;
+  actor: string;
+  actorRole: string;
+  target: string | null;
+  details: string;
+  timestamp: string;
+  ipAddress: string;
+}
 
 const actionIcons: Record<string, typeof User> = {
   user_login: LogIn,
@@ -128,6 +57,7 @@ const actionIcons: Record<string, typeof User> = {
   settings_updated: Settings,
   profile_viewed: Eye,
   role_changed: Shield,
+  profile_updated: Edit,
 };
 
 const actionColors: Record<string, string> = {
@@ -139,11 +69,73 @@ const actionColors: Record<string, string> = {
   settings_updated: 'text-accent',
   profile_viewed: 'text-primary',
   role_changed: 'text-accent',
+  profile_updated: 'text-primary',
 };
 
 export default function AdminAuditPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('all');
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, []);
+
+  const fetchAuditLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error) throw error;
+
+      // Fetch user emails for user_ids
+      const userIds = [...new Set((data || []).map(log => log.user_id).filter(Boolean))];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .in('id', userIds);
+
+      const emailMap: Record<string, string> = {};
+      profilesData?.forEach((p) => {
+        emailMap[p.id] = p.email;
+      });
+
+      // Fetch user roles
+      const { data: rolesData } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('user_id', userIds);
+
+      const roleMap: Record<string, string> = {};
+      rolesData?.forEach((r) => {
+        if (!roleMap[r.user_id] || r.role === 'super_admin' || (r.role === 'admin' && roleMap[r.user_id] === 'client')) {
+          roleMap[r.user_id] = r.role;
+        }
+      });
+
+      const logs: AuditLog[] = (data || []).map((log) => ({
+        id: log.id,
+        action: log.action,
+        actor: log.user_id ? emailMap[log.user_id] || 'Unknown' : 'System',
+        actorRole: log.user_id ? roleMap[log.user_id] || 'client' : 'system',
+        target: log.entity_type ? `${log.entity_type}:${log.entity_id?.slice(0, 8) || ''}` : null,
+        details: typeof log.details === 'object' ? JSON.stringify(log.details) : String(log.details || ''),
+        timestamp: new Date(log.created_at).toLocaleString(),
+        ipAddress: log.ip_address || 'N/A',
+      }));
+
+      setAuditLogs(logs);
+    } catch (error) {
+      console.error('Error fetching audit logs:', error);
+      toast.error('Failed to load audit logs');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredLogs = auditLogs.filter(log => {
     const matchesSearch = 
@@ -160,6 +152,22 @@ export default function AdminAuditPage() {
     ).join(' ');
   };
 
+  const uniqueActions = [...new Set(auditLogs.map(log => log.action))];
+  const todayCount = auditLogs.filter(log => {
+    const logDate = new Date(log.timestamp).toDateString();
+    return logDate === new Date().toDateString();
+  }).length;
+
+  const uniqueActors = new Set(auditLogs.map(log => log.actor)).size;
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 flex items-center justify-center min-h-[400px]">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 lg:p-8">
       {/* Header */}
@@ -174,7 +182,18 @@ export default function AdminAuditPage() {
           </p>
         </div>
         
-        <Button variant="outline">
+        <Button variant="outline" onClick={() => {
+          const blob = new Blob([JSON.stringify(filteredLogs, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          toast.success('Audit logs exported');
+        }}>
           <Download className="w-4 h-4 mr-2" />
           Export Logs
         </Button>
@@ -183,10 +202,10 @@ export default function AdminAuditPage() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Total Actions', value: '1,234', icon: FileText, color: 'text-primary' },
-          { label: 'Today', value: '45', icon: Calendar, color: 'text-success' },
-          { label: 'Unique Actors', value: '8', icon: User, color: 'text-accent' },
-          { label: 'Security Events', value: '12', icon: Shield, color: 'text-warning' },
+          { label: 'Total Actions', value: auditLogs.length.toLocaleString(), icon: FileText, color: 'text-primary' },
+          { label: 'Today', value: todayCount.toLocaleString(), icon: Calendar, color: 'text-success' },
+          { label: 'Unique Actors', value: uniqueActors.toLocaleString(), icon: User, color: 'text-accent' },
+          { label: 'Action Types', value: uniqueActions.length.toLocaleString(), icon: Shield, color: 'text-warning' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -227,25 +246,9 @@ export default function AdminAuditPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="user_login">Login</SelectItem>
-                <SelectItem value="user_logout">Logout</SelectItem>
-                <SelectItem value="user_created">User Created</SelectItem>
-                <SelectItem value="user_suspended">User Suspended</SelectItem>
-                <SelectItem value="block_deleted">Block Deleted</SelectItem>
-                <SelectItem value="settings_updated">Settings Updated</SelectItem>
-                <SelectItem value="role_changed">Role Changed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select defaultValue="today">
-              <SelectTrigger className="w-[140px]">
-                <Calendar className="w-4 h-4 mr-2" />
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="7d">Last 7 days</SelectItem>
-                <SelectItem value="30d">Last 30 days</SelectItem>
-                <SelectItem value="all">All time</SelectItem>
+                {uniqueActions.map((action) => (
+                  <SelectItem key={action} value={action}>{formatAction(action)}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -270,45 +273,53 @@ export default function AdminAuditPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLogs.map((log) => {
-              const ActionIcon = actionIcons[log.action] || FileText;
-              const actionColor = actionColors[log.action] || 'text-muted-foreground';
-              
-              return (
-                <TableRow key={log.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <ActionIcon className={`w-4 h-4 ${actionColor}`} />
-                      <span className="font-medium">{formatAction(log.action)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="text-foreground">{log.actor}</p>
-                      <Badge variant="secondary" className="text-xs mt-1">
-                        {log.actorRole.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {log.target ? (
-                      <span className="text-primary">{log.target}</span>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-xs truncate text-muted-foreground">
-                    {log.details}
-                  </TableCell>
-                  <TableCell className="font-mono text-sm text-muted-foreground">
-                    {log.ipAddress}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground whitespace-nowrap">
-                    {log.timestamp}
-                  </TableCell>
-                </TableRow>
-              );
-            })}
+            {filteredLogs.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  No audit logs found
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredLogs.map((log) => {
+                const ActionIcon = actionIcons[log.action] || FileText;
+                const actionColor = actionColors[log.action] || 'text-muted-foreground';
+                
+                return (
+                  <TableRow key={log.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <ActionIcon className={`w-4 h-4 ${actionColor}`} />
+                        <span className="font-medium">{formatAction(log.action)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-foreground">{log.actor}</p>
+                        <Badge variant="secondary" className="text-xs mt-1">
+                          {log.actorRole.replace('_', ' ')}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {log.target ? (
+                        <span className="text-primary">{log.target}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate text-muted-foreground">
+                      {log.details}
+                    </TableCell>
+                    <TableCell className="font-mono text-sm text-muted-foreground">
+                      {log.ipAddress}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground whitespace-nowrap">
+                      {log.timestamp}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
           </TableBody>
         </Table>
 
@@ -317,10 +328,6 @@ export default function AdminAuditPage() {
           <p className="text-sm text-muted-foreground">
             Showing {filteredLogs.length} of {auditLogs.length} entries
           </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
-          </div>
         </div>
       </motion.div>
     </div>
