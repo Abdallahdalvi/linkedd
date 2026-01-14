@@ -22,6 +22,12 @@ import {
   Ghost,
   ShoppingBag,
   Clock,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  Video,
+  Archive,
+  FileCode,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isMainDomain } from '@/config/domain';
@@ -30,6 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import DownloadAdModal from '@/components/DownloadAdModal';
 
 // Generate or retrieve a persistent visitor ID
 const getVisitorId = (): string => {
@@ -610,7 +617,12 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <BlockRenderer block={block} theme={theme} onClick={() => handleBlockClick(block)} />
+                  <BlockRenderer 
+                    block={block} 
+                    theme={theme} 
+                    onClick={() => handleBlockClick(block)} 
+                    profileId={profile?.id}
+                  />
                 </motion.div>
               ))}
             </div>
@@ -622,7 +634,8 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
   );
 }
 
-function BlockRenderer({ block, theme, onClick }: { block: Block; theme: ThemeColors; onClick: () => void }) {
+function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; theme: ThemeColors; onClick: () => void; profileId?: string }) {
+  const [showAdModal, setShowAdModal] = useState(false);
   const buttonRadius = theme.buttonRadius || 16;
   const buttonStyle = theme.buttonStyle || 'filled';
 
@@ -676,7 +689,132 @@ function BlockRenderer({ block, theme, onClick }: { block: Block; theme: ThemeCo
     USD: '$', EUR: '€', GBP: '£', INR: '₹', JPY: '¥', CAD: 'C$', AUD: 'A$',
   };
 
+  const fileTypeIcons: Record<string, typeof FileText> = {
+    pdf: FileText,
+    document: FileText,
+    image: ImageIcon,
+    video: Video,
+    audio: Music,
+    archive: Archive,
+    code: FileCode,
+    other: Download,
+  };
+
+  // Handle download block click
+  const handleDownloadClick = () => {
+    const downloadContent = block.content as {
+      ad_enabled?: boolean;
+      ad_duration?: number;
+      ad_image_url?: string;
+      ad_link_url?: string;
+      ad_text?: string;
+    } | undefined;
+
+    if (downloadContent?.ad_enabled) {
+      setShowAdModal(true);
+    } else {
+      // Direct download
+      triggerDownload();
+    }
+  };
+
+  // Trigger the actual download
+  const triggerDownload = () => {
+    if (!block.url) return;
+
+    // Track the click
+    const visitorId = localStorage.getItem('linksdc_visitor_id') || `v_${Date.now()}`;
+    
+    Promise.all([
+      supabase.from('analytics_events').insert({
+        profile_id: profileId,
+        block_id: block.id,
+        event_type: 'download',
+        device_type: /Tablet|iPad/i.test(navigator.userAgent) ? 'tablet' : /Mobile|Android|iPhone/i.test(navigator.userAgent) ? 'mobile' : 'desktop',
+        browser: navigator.userAgent.includes('Firefox') ? 'Firefox' : navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Other',
+        referrer: document.referrer || null,
+        visitor_id: visitorId,
+      }),
+      supabase
+        .from('blocks')
+        .select('total_clicks')
+        .eq('id', block.id)
+        .single()
+        .then(({ data }) => {
+          const currentClicks = data?.total_clicks || 0;
+          return supabase
+            .from('blocks')
+            .update({ total_clicks: currentClicks + 1 })
+            .eq('id', block.id);
+        }),
+    ]).catch(console.error);
+
+    // Trigger download
+    window.open(block.url, '_blank', 'noopener,noreferrer');
+  };
+
   switch (block.type) {
+    case 'download':
+      const downloadContent = block.content as {
+        file_type?: string;
+        file_size?: string;
+        ad_enabled?: boolean;
+        ad_duration?: number;
+        ad_image_url?: string;
+        ad_link_url?: string;
+        ad_text?: string;
+      } | undefined;
+
+      const FileIcon = fileTypeIcons[downloadContent?.file_type || 'other'] || Download;
+
+      return (
+        <>
+          <button 
+            onClick={handleDownloadClick}
+            className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            style={pillStyle}
+          >
+            <div className="flex items-center gap-3">
+              <div 
+                className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ backgroundColor: `${theme.accent}20` }}
+              >
+                <FileIcon className="w-5 h-5" style={{ color: theme.accent }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold leading-tight truncate" style={{ color: theme.text }}>
+                  {block.title || 'Download'}
+                </h3>
+                {(block.subtitle || downloadContent?.file_size) && (
+                  <p className="text-sm truncate opacity-60" style={{ color: theme.text }}>
+                    {block.subtitle || downloadContent?.file_size}
+                  </p>
+                )}
+              </div>
+              <div 
+                className="px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-1.5 flex-shrink-0"
+                style={{ backgroundColor: theme.accent, color: '#fff' }}
+              >
+                <Download className="w-4 h-4" />
+                {downloadContent?.ad_enabled ? 'Free' : 'Get'}
+              </div>
+            </div>
+          </button>
+
+          <DownloadAdModal
+            isOpen={showAdModal}
+            onClose={() => setShowAdModal(false)}
+            onDownload={triggerDownload}
+            adDuration={downloadContent?.ad_duration || 5}
+            adImageUrl={downloadContent?.ad_image_url}
+            adLinkUrl={downloadContent?.ad_link_url}
+            adText={downloadContent?.ad_text}
+            fileName={block.title || 'File'}
+            theme={{ text: theme.text, cardBg: theme.cardBg, accent: theme.accent }}
+          />
+        </>
+      );
+
     case 'link':
     case 'cta':
       return (

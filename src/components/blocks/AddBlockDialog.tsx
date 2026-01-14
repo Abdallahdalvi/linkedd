@@ -16,6 +16,7 @@ import {
   Columns,
   Clock,
   ShoppingBag,
+  Download,
 } from 'lucide-react';
 import { Block } from '@/hooks/useLinkProfile';
 import {
@@ -37,6 +38,7 @@ import ScheduledBlockEditor from './editors/ScheduledBlockEditor';
 import HtmlBlockEditor from './editors/HtmlBlockEditor';
 import FeaturedBlockEditor from './editors/FeaturedBlockEditor';
 import ShopBlockEditor from './editors/ShopBlockEditor';
+import DownloadBlockEditor from './editors/DownloadBlockEditor';
 
 interface AddBlockDialogProps {
   open: boolean;
@@ -47,6 +49,7 @@ interface AddBlockDialogProps {
 const blockTypes = [
   { type: 'link', label: 'Link', icon: LinkIcon, description: 'Simple clickable link' },
   { type: 'cta', label: 'CTA Button', icon: ExternalLink, description: 'Call-to-action button' },
+  { type: 'download', label: 'Download', icon: Download, description: 'File download with reward ad' },
   { type: 'shop', label: 'Buy Now / Shop', icon: ShoppingBag, description: 'Sell digital or physical products' },
   { type: 'text', label: 'Text Block', icon: Type, description: 'Plain text content' },
   { type: 'image', label: 'Image Block', icon: Image, description: 'Display an image' },
@@ -102,6 +105,8 @@ export default function AddBlockDialog({ open, onOpenChange, onAdd }: AddBlockDi
       case 'link':
       case 'cta':
         return <LinkBlockEditor block={{ type: selectedType }} {...commonProps} />;
+      case 'download':
+        return <DownloadBlockEditor {...commonProps} />;
       case 'shop':
         return <ShopBlockEditor {...commonProps} />;
       case 'carousel':
