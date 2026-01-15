@@ -43,6 +43,9 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
     ad_image_url?: string;
     ad_link_url?: string;
     ad_text?: string;
+    // AdMob fields
+    admob_rewarded_id_ios?: string;
+    admob_rewarded_id_android?: string;
   } | undefined;
 
   const [form, setForm] = useState({
@@ -57,6 +60,9 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
     ad_image_url: content?.ad_image_url || '',
     ad_link_url: content?.ad_link_url || '',
     ad_text: content?.ad_text || 'This download is sponsored by:',
+    // AdMob fields
+    admob_rewarded_id_ios: content?.admob_rewarded_id_ios || '',
+    admob_rewarded_id_android: content?.admob_rewarded_id_android || '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,6 +82,8 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
         ad_image_url: form.ad_image_url,
         ad_link_url: form.ad_link_url,
         ad_text: form.ad_text,
+        admob_rewarded_id_ios: form.admob_rewarded_id_ios,
+        admob_rewarded_id_android: form.admob_rewarded_id_android,
       },
     });
   };
@@ -189,60 +197,100 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
               Show a short ad before download starts. Great for monetizing free downloads!
             </p>
 
-            <div className="space-y-2">
-              <Label htmlFor="ad_duration">Ad Duration</Label>
-              <Select
-                value={String(form.ad_duration)}
-                onValueChange={(value) => setForm({ ...form, ad_duration: parseInt(value) })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {adDurations.map((dur) => (
-                    <SelectItem key={dur.value} value={dur.value}>
-                      {dur.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="ad_text">Ad Text</Label>
-              <Input
-                id="ad_text"
-                value={form.ad_text}
-                onChange={(e) => setForm({ ...form, ad_text: e.target.value })}
-                placeholder="This download is sponsored by:"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>Ad Image (Banner)</Label>
-              <ImageUpload
-                currentImage={form.ad_image_url}
-                onUpload={(url) => setForm({ ...form, ad_image_url: url })}
-                folder="ad-images"
-                aspectRatio="video"
-              />
-              <p className="text-xs text-muted-foreground">
-                Recommended: 728x90 or 300x250 banner
+            {/* AdMob Section */}
+            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <h5 className="text-sm font-medium text-foreground mb-3">📱 Google AdMob (Native App)</h5>
+              <p className="text-xs text-muted-foreground mb-3">
+                For mobile apps only. Leave empty to use custom ads below.
               </p>
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="admob_ios" className="text-xs">iOS Rewarded Ad ID</Label>
+                  <Input
+                    id="admob_ios"
+                    value={form.admob_rewarded_id_ios}
+                    onChange={(e) => setForm({ ...form, admob_rewarded_id_ios: e.target.value })}
+                    placeholder="ca-app-pub-XXXXXXXX/YYYYYYYY"
+                    className="text-xs"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="admob_android" className="text-xs">Android Rewarded Ad ID</Label>
+                  <Input
+                    id="admob_android"
+                    value={form.admob_rewarded_id_android}
+                    onChange={(e) => setForm({ ...form, admob_rewarded_id_android: e.target.value })}
+                    placeholder="ca-app-pub-XXXXXXXX/ZZZZZZZZ"
+                    className="text-xs"
+                  />
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="ad_link_url">Ad Click URL (optional)</Label>
-              <Input
-                id="ad_link_url"
-                type="url"
-                value={form.ad_link_url}
-                onChange={(e) => setForm({ ...form, ad_link_url: e.target.value })}
-                placeholder="https://sponsor.com"
-              />
-              <p className="text-xs text-muted-foreground">
-                Where users go when they click the ad
+            {/* Fallback/Web Ads Section */}
+            <div className="p-3 bg-secondary/50 rounded-lg">
+              <h5 className="text-sm font-medium text-foreground mb-3">🌐 Custom Ad (Web / Fallback)</h5>
+              <p className="text-xs text-muted-foreground mb-3">
+                Used on web or when AdMob is unavailable.
               </p>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ad_duration">Ad Duration</Label>
+                  <Select
+                    value={String(form.ad_duration)}
+                    onValueChange={(value) => setForm({ ...form, ad_duration: parseInt(value) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {adDurations.map((dur) => (
+                        <SelectItem key={dur.value} value={dur.value}>
+                          {dur.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ad_text">Ad Text</Label>
+                  <Input
+                    id="ad_text"
+                    value={form.ad_text}
+                    onChange={(e) => setForm({ ...form, ad_text: e.target.value })}
+                    placeholder="This download is sponsored by:"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Ad Image (Banner)</Label>
+                  <ImageUpload
+                    currentImage={form.ad_image_url}
+                    onUpload={(url) => setForm({ ...form, ad_image_url: url })}
+                    folder="ad-images"
+                    aspectRatio="video"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Recommended: 728x90 or 300x250 banner
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="ad_link_url">Ad Click URL (optional)</Label>
+                  <Input
+                    id="ad_link_url"
+                    type="url"
+                    value={form.ad_link_url}
+                    onChange={(e) => setForm({ ...form, ad_link_url: e.target.value })}
+                    placeholder="https://sponsor.com"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Where users go when they click the ad
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         )}
