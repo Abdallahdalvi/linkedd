@@ -17,6 +17,9 @@ import {
   ShoppingBag,
   DollarSign,
   RefreshCw,
+  Megaphone,
+  Play,
+  Gift,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,6 +38,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useAnalytics, DateRange } from '@/hooks/useAnalytics';
+import { useAdAnalytics } from '@/hooks/useAdAnalytics';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface DashboardAnalyticsPageProps {
@@ -59,6 +63,7 @@ const deviceColors: Record<string, string> = {
 export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAnalyticsPageProps) {
   const [dateRange, setDateRange] = useState<DateRange>('30d');
   const { countryData, deviceData, referrerData, uniqueVisitors, loading: analyticsLoading, refetch } = useAnalytics(profile?.id, dateRange);
+  const { impressions, clicks, rewards, ctr: adCtr, rewardRate, loading: adLoading, refetch: refetchAds } = useAdAnalytics(profile?.id, dateRange);
   
   const totalViews = profile?.total_views || 0;
   const totalClicks = blocks.reduce((acc, b) => acc + (b.total_clicks || 0), 0);
@@ -111,8 +116,8 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
               <SelectItem value="all">All time</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" size="icon" onClick={() => refetch()} disabled={analyticsLoading}>
-            <RefreshCw className={`w-4 h-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
+          <Button variant="outline" size="icon" onClick={() => { refetch(); refetchAds(); }} disabled={analyticsLoading || adLoading}>
+            <RefreshCw className={`w-4 h-4 ${analyticsLoading || adLoading ? 'animate-spin' : ''}`} />
           </Button>
           <Button variant="outline">
             <Download className="w-4 h-4 mr-2" />
@@ -489,6 +494,133 @@ export default function DashboardAnalyticsPage({ profile, blocks }: DashboardAna
           </Table>
         </motion.div>
       )}
+
+      {/* Ad Analytics Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.7 }}
+        className="glass-card mt-8"
+      >
+        <div className="p-6 border-b border-border">
+          <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <Megaphone className="w-5 h-5 text-primary" />
+            Ad Performance
+          </h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track your ad impressions, clicks, and rewards from download blocks
+          </p>
+        </div>
+
+        {/* Ad Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 p-6">
+          <div className="p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Impressions</span>
+            </div>
+            {adLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-foreground">{impressions.totalImpressions.toLocaleString()}</p>
+            )}
+          </div>
+          <div className="p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-2 mb-2">
+              <MousePointerClick className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Ad Clicks</span>
+            </div>
+            {adLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-foreground">{clicks.totalClicks.toLocaleString()}</p>
+            )}
+          </div>
+          <div className="p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Gift className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Rewards Given</span>
+            </div>
+            {adLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-foreground">{rewards.totalRewards.toLocaleString()}</p>
+            )}
+          </div>
+          <div className="p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Ad CTR</span>
+            </div>
+            {adLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-foreground">{adCtr.toFixed(1)}%</p>
+            )}
+          </div>
+          <div className="p-4 rounded-xl bg-secondary/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Play className="w-4 h-4 text-primary" />
+              <span className="text-sm text-muted-foreground">Reward Rate</span>
+            </div>
+            {adLoading ? (
+              <Skeleton className="h-8 w-16" />
+            ) : (
+              <p className="text-2xl font-bold text-foreground">{rewardRate.toFixed(1)}%</p>
+            )}
+          </div>
+        </div>
+
+        {/* Ad Performance by Block */}
+        {!adLoading && impressions.impressionsByBlock.length > 0 && (
+          <div className="px-6 pb-6">
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">Performance by Download Block</h3>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Block</TableHead>
+                  <TableHead className="text-right">Impressions</TableHead>
+                  <TableHead className="text-right">Clicks</TableHead>
+                  <TableHead className="text-right">Rewards</TableHead>
+                  <TableHead className="text-right">CTR</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {impressions.impressionsByBlock.slice(0, 5).map((block) => {
+                  const blockClicks = clicks.clicksByBlock.find(c => c.blockId === block.blockId)?.clicks || 0;
+                  const blockRewards = rewards.rewardsByBlock.find(r => r.blockId === block.blockId)?.rewards || 0;
+                  const blockCtr = block.impressions > 0 ? (blockClicks / block.impressions) * 100 : 0;
+
+                  return (
+                    <TableRow key={block.blockId}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Download className="w-4 h-4 text-primary" />
+                          <span className="font-medium">{block.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">{block.impressions.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{blockClicks.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">{blockRewards.toLocaleString()}</TableCell>
+                      <TableCell className="text-right">
+                        <span className="text-success font-medium">{blockCtr.toFixed(1)}%</span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        {!adLoading && impressions.totalImpressions === 0 && (
+          <div className="px-6 pb-6">
+            <p className="text-center text-muted-foreground py-4">
+              No ad data yet. Add download blocks with ads to start tracking!
+            </p>
+          </div>
+        )}
+      </motion.div>
     </div>
   );
 }
