@@ -13,6 +13,12 @@ const config: CapacitorConfig = {
       launchShowDuration: 2000,
       backgroundColor: '#000000',
       showSpinner: false
+    },
+    AdMob: {
+      // Your real Android App ID
+      appId: 'ca-app-pub-4440599855987610~1991629046',
+      // Add iOS App ID when available
+      // iosAppId: 'ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX',
     }
   },
   ios: {
