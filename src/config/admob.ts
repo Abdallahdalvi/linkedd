@@ -1,6 +1,12 @@
-// AdMob Configuration
+// Ad Configuration
 // These are your real production ad unit IDs
 
+// Google AdSense (Web)
+export const ADSENSE_CONFIG = {
+  clientId: 'ca-pub-4440599855987610',
+};
+
+// Google AdMob (Native Mobile)
 export const ADMOB_CONFIG = {
   // Android Configuration
   android: {

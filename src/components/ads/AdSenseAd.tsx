@@ -35,15 +35,12 @@ export const AdSenseAd = ({
     }
   }, []);
 
-  // Get AdSense client ID from environment or return placeholder
-  const adClient = import.meta.env.VITE_ADSENSE_CLIENT_ID || '';
+  // Your AdSense client ID
+  const adClient = 'ca-pub-4440599855987610';
 
+  // AdSense is always configured now
   if (!adClient) {
-    return (
-      <div className={`bg-muted/50 rounded-lg p-4 text-center text-sm text-muted-foreground ${className}`}>
-        <p>Ad placeholder - Configure VITE_ADSENSE_CLIENT_ID</p>
-      </div>
-    );
+    return null;
   }
 
   return (
