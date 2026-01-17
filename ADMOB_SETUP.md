@@ -1,5 +1,23 @@
 # Google AdMob & AdSense Integration Guide
 
+## 🎯 Your Production Ad Unit IDs
+
+### Android
+| Type | ID |
+|------|-----|
+| **App ID** | `ca-app-pub-4440599855987610~1991629046` |
+| **Rewarded Ad** | `ca-app-pub-4440599855987610/2715529689` |
+
+### iOS (Add when created)
+| Type | ID |
+|------|-----|
+| **App ID** | _(pending)_ |
+| **Rewarded Ad** | _(pending)_ |
+
+> These IDs are configured in `src/config/admob.ts`
+
+---
+
 This project supports both **Google AdSense** (for web) and **Google AdMob** (for native mobile apps).
 
 ## Table of Contents
