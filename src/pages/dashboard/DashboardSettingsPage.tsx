@@ -24,6 +24,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
+import DatabaseExportSection from '@/components/settings/DatabaseExportSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -967,7 +968,7 @@ export default function DashboardSettingsPage({
               <div className="space-y-4">
                 <Button variant="outline" className="w-full justify-start" onClick={handleExportData}>
                   <Download className="w-4 h-4 mr-2" />
-                  Export My Data
+                  Export My Data (JSON)
                 </Button>
 
                 <Button variant="outline" className="w-full justify-start" onClick={handleDuplicateLayout}>
@@ -976,6 +977,8 @@ export default function DashboardSettingsPage({
                 </Button>
               </div>
             </motion.div>
+
+            <DatabaseExportSection profile={profile} />
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
