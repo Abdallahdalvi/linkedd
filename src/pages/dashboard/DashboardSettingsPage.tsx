@@ -25,6 +25,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import DatabaseExportSection from '@/components/settings/DatabaseExportSection';
+import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -979,6 +980,15 @@ export default function DashboardSettingsPage({
             </motion.div>
 
             <DatabaseExportSection profile={profile} />
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="lg:col-span-2"
+            >
+              <SchemaExportSection />
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
