@@ -4,14 +4,95 @@ This guide covers migrating the entire LinkDC backend from Lovable Cloud to your
 
 ## Table of Contents
 
-1. [Database Schema Overview](#database-schema-overview)
-2. [PostgreSQL Migration](#postgresql-migration)
-3. [MySQL Migration](#mysql-migration)
-4. [SQLite Migration](#sqlite-migration)
-5. [MongoDB Migration](#mongodb-migration)
-6. [Authentication Setup](#authentication-setup)
-7. [Storage Setup](#storage-setup)
-8. [Environment Variables](#environment-variables)
+1. [Quick Start - Full Backup Export](#quick-start---full-backup-export)
+2. [Database Schema Overview](#database-schema-overview)
+3. [PostgreSQL Migration](#postgresql-migration)
+4. [MySQL Migration](#mysql-migration)
+5. [SQLite Migration](#sqlite-migration)
+6. [MongoDB Migration](#mongodb-migration)
+7. [Authentication Setup](#authentication-setup)
+8. [Storage Setup](#storage-setup)
+9. [Environment Variables](#environment-variables)
+
+---
+
+## Quick Start - Full Backup Export
+
+The easiest way to migrate your database is using the **Full Database Backup** feature in the app.
+
+### How to Export
+
+1. Go to **Dashboard → Settings → Account**
+2. Find the **"Full Database Backup"** section
+3. Select your target database format:
+   - **PostgreSQL** (.sql) - Recommended for production
+   - **MySQL** (.sql) - For MySQL/MariaDB servers
+   - **SQLite** (.sql) - For lightweight deployments
+   - **JSON** (.json) - For NoSQL databases or custom imports
+4. Click **"Export Full Backup"**
+5. The file includes both **schema AND all data**
+
+### What's Included in the Backup
+
+| Component | Description |
+|-----------|-------------|
+| **Schema** | Complete table definitions, indexes, functions, triggers |
+| **Profiles** | User accounts and authentication data |
+| **User Roles** | Admin/client role assignments |
+| **Link Profiles** | All public bio pages with settings |
+| **Blocks** | All content blocks (links, text, images, etc.) |
+| **Custom Domains** | Domain configurations and verification status |
+| **Analytics** | Page views and click tracking data |
+| **Audit Logs** | Admin action history |
+| **Admin Settings** | Global configuration settings |
+
+### Importing the Backup
+
+#### PostgreSQL
+```bash
+# Create database
+createdb linkdc_production
+
+# Import the backup
+psql -d linkdc_production -f linkdc-backup-postgresql-2024-01-15.sql
+```
+
+#### MySQL
+```bash
+# Create database
+mysql -u root -p -e "CREATE DATABASE linkdc_production CHARACTER SET utf8mb4"
+
+# Import the backup
+mysql -u root -p linkdc_production < linkdc-backup-mysql-2024-01-15.sql
+```
+
+#### SQLite
+```bash
+# Create and import directly
+sqlite3 linkdc.db < linkdc-backup-sqlite-2024-01-15.sql
+```
+
+#### JSON (for MongoDB or custom)
+```bash
+# For MongoDB - import each collection
+mongoimport --db linkdc --collection profiles --file backup.json --jsonArray
+
+# For custom imports, parse the JSON file which has this structure:
+# {
+#   "metadata": { "generated_at": "...", "record_counts": {...} },
+#   "data": {
+#     "profiles": [...],
+#     "link_profiles": [...],
+#     "blocks": [...],
+#     ...
+#   }
+# }
+```
+
+### Data Access Levels
+
+- **Admin users**: Can export ALL records from all tables
+- **Regular users**: Can only export their own data
 
 ---
 
