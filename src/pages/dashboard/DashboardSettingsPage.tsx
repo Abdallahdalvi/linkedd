@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useUserRole } from '@/hooks/useUserRole';
 import { useCustomDomains, CustomDomain } from '@/hooks/useCustomDomains';
 import { DnsInstructions } from '@/components/domain/DnsInstructions';
 import { DomainStatusAlert } from '@/components/domain/DomainStatusAlert';
@@ -82,6 +83,7 @@ export default function DashboardSettingsPage({
 }: DashboardSettingsPageProps) {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
   const [saving, setSaving] = useState(false);
   const [isPublic, setIsPublic] = useState(profile?.is_public ?? true);
   const [isPasswordProtected, setIsPasswordProtected] = useState(profile?.is_password_protected ?? false);
@@ -980,25 +982,29 @@ export default function DashboardSettingsPage({
               </div>
             </motion.div>
 
-            <DatabaseExportSection profile={profile} />
+            {isAdmin && (
+              <>
+                <DatabaseExportSection profile={profile} />
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-              className="lg:col-span-2"
-            >
-              <FullBackupExportSection />
-            </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 }}
+                  className="lg:col-span-2"
+                >
+                  <FullBackupExportSection />
+                </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="lg:col-span-2"
-            >
-              <SchemaExportSection />
-            </motion.div>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                  className="lg:col-span-2"
+                >
+                  <SchemaExportSection />
+                </motion.div>
+              </>
+            )}
 
             <motion.div
               initial={{ opacity: 0, y: 20 }}
