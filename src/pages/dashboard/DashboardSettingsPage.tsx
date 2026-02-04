@@ -984,6 +984,21 @@ export default function DashboardSettingsPage({
 
             {isAdmin && (
               <>
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12 }}
+                  className="lg:col-span-2"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-foreground">Admin Tools</h3>
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                      Admin Only
+                    </Badge>
+                  </div>
+                </motion.div>
+
                 <DatabaseExportSection profile={profile} />
 
                 <motion.div
