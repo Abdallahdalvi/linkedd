@@ -12,10 +12,14 @@ import {
   X,
   ChevronRight,
   User,
+  Shield,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserRole } from '@/hooks/useUserRole';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -32,9 +36,30 @@ const navItems = [
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const { user, signOut } = useAuth();
+  const { isSuperAdmin, isAdmin, roles } = useUserRole();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const getRoleBadge = () => {
+    if (isSuperAdmin) {
+      return (
+        <Badge className="bg-amber-500/10 text-amber-500 border-amber-500/20 text-xs gap-1">
+          <Crown className="w-3 h-3" />
+          Super Admin
+        </Badge>
+      );
+    }
+    if (isAdmin) {
+      return (
+        <Badge className="bg-primary/10 text-primary border-primary/20 text-xs gap-1">
+          <Shield className="w-3 h-3" />
+          Admin
+        </Badge>
+      );
+    }
+    return null;
+  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -124,9 +149,12 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
-                  {user?.user_metadata?.full_name || user?.email}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-medium truncate">
+                    {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
+                  </p>
+                  {getRoleBadge()}
+                </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {user?.email}
                 </p>
