@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -37,6 +37,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import DownloadAdModal from '@/components/DownloadAdModal';
+import DataCollectionGate from '@/components/blocks/DataCollectionGate';
 
 // Generate or retrieve a persistent visitor ID
 const getVisitorId = (): string => {
@@ -636,8 +637,29 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
 
 function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; theme: ThemeColors; onClick: () => void; profileId?: string }) {
   const [showAdModal, setShowAdModal] = useState(false);
+  const [showDataGate, setShowDataGate] = useState(false);
   const buttonRadius = theme.buttonRadius || 16;
   const buttonStyle = theme.buttonStyle || 'filled';
+
+  // Check if data collection gate is needed
+  const content = block.content as Record<string, any> | null;
+  const dataGateEnabled = content?.data_gate_enabled === true;
+  const hasAlreadySubmitted = dataGateEnabled
+    ? localStorage.getItem(`data_gate_${block.id}`) === 'true'
+    : true;
+
+  const handleGatedClick = (originalAction: () => void) => {
+    if (dataGateEnabled && !hasAlreadySubmitted) {
+      // Store the pending action and show the gate
+      pendingActionRef.current = originalAction;
+      setShowDataGate(true);
+    } else {
+      originalAction();
+    }
+  };
+
+  // Use a ref to store the pending action after data collection
+  const pendingActionRef = useRef<(() => void) | null>(null);
 
   // Get button style based on selected style
   const getButtonStyle = () => {
@@ -753,6 +775,27 @@ function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; the
     window.open(block.url, '_blank', 'noopener,noreferrer');
   };
 
+  const visitorId = localStorage.getItem('linksdc_visitor_id') || `v_${Date.now()}`;
+  
+  const dataGateElement = showDataGate && profileId ? (
+    <DataCollectionGate
+      blockId={block.id}
+      profileId={profileId}
+      visitorId={visitorId}
+      collectName={content?.collect_name}
+      collectEmail={content?.collect_email}
+      collectPhone={content?.collect_phone}
+      theme={{ text: theme.text, accent: theme.accent, cardBg: theme.cardBg }}
+      onComplete={() => {
+        setShowDataGate(false);
+        if (pendingActionRef.current) {
+          pendingActionRef.current();
+          pendingActionRef.current = null;
+        }
+      }}
+    />
+  ) : null;
+
   switch (block.type) {
     case 'download':
       const downloadContent = block.content as {
@@ -770,7 +813,7 @@ function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; the
       return (
         <>
           <button 
-            onClick={handleDownloadClick}
+            onClick={() => handleGatedClick(handleDownloadClick)}
             className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
             style={pillStyle}
           >
@@ -812,14 +855,16 @@ function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; the
             fileName={block.title || 'File'}
             theme={{ text: theme.text, cardBg: theme.cardBg, accent: theme.accent }}
           />
+          {dataGateElement}
         </>
       );
 
     case 'link':
     case 'cta':
       return (
+        <>
         <button 
-          onClick={onClick}
+          onClick={() => handleGatedClick(onClick)}
           className="block w-full py-4 px-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
           style={pillStyle}
         >
@@ -842,6 +887,8 @@ function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; the
             {block.thumbnail_url && <div className="w-10 flex-shrink-0" />}
           </div>
         </button>
+        {dataGateElement}
+        </>
       );
 
     case 'video':
