@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import ImageUpload from '@/components/ImageUpload';
 import { Block } from '@/hooks/useLinkProfile';
 import { Download, Clock, FileText, Image as ImageIcon, Video, Music, Archive, FileCode } from 'lucide-react';
+import DataCollectionSettings, { DataCollectionConfig } from './DataCollectionSettings';
 
 interface DownloadBlockEditorProps {
   block?: Partial<Block>;
@@ -62,9 +63,14 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
     ad_image_url: content?.ad_image_url || '',
     ad_link_url: content?.ad_link_url || '',
     ad_text: content?.ad_text || 'This download is sponsored by:',
-    // AdMob fields
     admob_rewarded_id_ios: content?.admob_rewarded_id_ios || '',
     admob_rewarded_id_android: content?.admob_rewarded_id_android || '',
+  });
+  const [dataCollection, setDataCollection] = useState<DataCollectionConfig>({
+    data_gate_enabled: (content as any)?.data_gate_enabled ?? false,
+    collect_name: (content as any)?.collect_name ?? true,
+    collect_email: (content as any)?.collect_email ?? true,
+    collect_phone: (content as any)?.collect_phone ?? false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -87,6 +93,7 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
         ad_text: form.ad_text,
         admob_rewarded_id_ios: form.admob_rewarded_id_ios,
         admob_rewarded_id_android: form.admob_rewarded_id_android,
+        ...dataCollection,
       },
     });
   };
@@ -346,6 +353,9 @@ export default function DownloadBlockEditor({ block, onSave, onCancel }: Downloa
           </div>
         )}
       </div>
+
+      {/* Data Collection Gate */}
+      <DataCollectionSettings config={dataCollection} onChange={setDataCollection} />
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2 pt-4 border-t border-border">

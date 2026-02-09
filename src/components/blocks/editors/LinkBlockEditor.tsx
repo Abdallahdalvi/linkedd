@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import ImageUpload from '@/components/ImageUpload';
 import { ExternalLink } from 'lucide-react';
+import DataCollectionSettings, { DataCollectionConfig } from './DataCollectionSettings';
 
 interface LinkBlockEditorProps {
   block?: Partial<Block>;
@@ -14,12 +15,19 @@ interface LinkBlockEditorProps {
 }
 
 export default function LinkBlockEditor({ block, onSave, onCancel }: LinkBlockEditorProps) {
+  const existingContent = (block?.content || {}) as Record<string, unknown>;
   const [form, setForm] = useState({
     title: block?.title || '',
     subtitle: block?.subtitle || '',
     url: block?.url || '',
     thumbnail_url: block?.thumbnail_url || '',
     open_in_new_tab: block?.open_in_new_tab ?? true,
+  });
+  const [dataCollection, setDataCollection] = useState<DataCollectionConfig>({
+    data_gate_enabled: (existingContent.data_gate_enabled as boolean) ?? false,
+    collect_name: (existingContent.collect_name as boolean) ?? true,
+    collect_email: (existingContent.collect_email as boolean) ?? true,
+    collect_phone: (existingContent.collect_phone as boolean) ?? false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -31,6 +39,7 @@ export default function LinkBlockEditor({ block, onSave, onCancel }: LinkBlockEd
       url: form.url,
       thumbnail_url: form.thumbnail_url,
       open_in_new_tab: form.open_in_new_tab,
+      content: { ...existingContent, ...dataCollection },
     });
   };
 
@@ -93,6 +102,8 @@ export default function LinkBlockEditor({ block, onSave, onCancel }: LinkBlockEd
           onCheckedChange={(checked) => setForm({ ...form, open_in_new_tab: checked })}
         />
       </div>
+
+      <DataCollectionSettings config={dataCollection} onChange={setDataCollection} />
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>

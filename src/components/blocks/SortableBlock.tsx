@@ -25,6 +25,7 @@ import {
   Clock,
   ShoppingBag,
   Download,
+  ClipboardList,
 } from 'lucide-react';
 import { Block } from '@/hooks/useLinkProfile';
 import { Button } from '@/components/ui/button';
@@ -255,6 +256,12 @@ export default function SortableBlock({ block, onUpdate, onDelete }: SortableBlo
           <div className="text-xs text-muted-foreground">
             <span className="font-medium text-foreground">{block.total_clicks}</span> clicks
           </div>
+          {(block.content as Record<string, unknown>)?.data_gate_enabled && (
+            <div className="text-xs text-primary flex items-center gap-1">
+              <ClipboardList className="w-3 h-3" />
+              Data gate
+            </div>
+          )}
           {block.open_in_new_tab && (
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <ExternalLink className="w-3 h-3" />
