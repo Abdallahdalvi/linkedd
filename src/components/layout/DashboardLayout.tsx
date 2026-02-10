@@ -14,6 +14,7 @@ import {
   User,
   Shield,
   Crown,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -29,6 +30,7 @@ const navItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/dashboard/links', label: 'Links', icon: LinkIcon },
   { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/dashboard/leads', label: 'Leads', icon: ClipboardList },
   { href: '/dashboard/profile', label: 'Profile', icon: User },
   { href: '/dashboard/design', label: 'Design', icon: Palette },
   { href: '/dashboard/settings', label: 'Settings', icon: Settings },
