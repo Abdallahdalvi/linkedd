@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ImageUpload from '@/components/ImageUpload';
 import { ShoppingBag, Tag, DollarSign, LayoutGrid, Square, Rows3 } from 'lucide-react';
+import DataCollectionSettings, { DataCollectionConfig } from './DataCollectionSettings';
 
 interface ShopBlockEditorProps {
   block?: Partial<Block>;
@@ -16,6 +17,7 @@ interface ShopBlockEditorProps {
 }
 
 const ShopBlockEditor = forwardRef<HTMLFormElement, ShopBlockEditorProps>(function ShopBlockEditor({ block, onSave, onCancel }, ref) {
+  const existingContent = (block?.content || {}) as Record<string, unknown>;
   const [form, setForm] = useState({
     title: block?.title || '',
     subtitle: block?.subtitle || '',
@@ -28,6 +30,12 @@ const ShopBlockEditor = forwardRef<HTMLFormElement, ShopBlockEditorProps>(functi
     product_type: (block?.content as { product_type?: string })?.product_type || 'digital',
     badge: (block?.content as { badge?: string })?.badge || '',
     display_style: (block?.content as { display_style?: string })?.display_style || 'card',
+  });
+  const [dataCollection, setDataCollection] = useState<DataCollectionConfig>({
+    data_gate_enabled: (existingContent.data_gate_enabled as boolean) ?? false,
+    collect_name: (existingContent.collect_name as boolean) ?? true,
+    collect_email: (existingContent.collect_email as boolean) ?? true,
+    collect_phone: (existingContent.collect_phone as boolean) ?? false,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -46,6 +54,7 @@ const ShopBlockEditor = forwardRef<HTMLFormElement, ShopBlockEditorProps>(functi
         product_type: form.product_type,
         badge: form.badge,
         display_style: form.display_style,
+        ...dataCollection,
       },
     });
   };
@@ -324,6 +333,8 @@ const ShopBlockEditor = forwardRef<HTMLFormElement, ShopBlockEditorProps>(functi
           )}
         </div>
       </div>
+
+      <DataCollectionSettings config={dataCollection} onChange={setDataCollection} />
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>

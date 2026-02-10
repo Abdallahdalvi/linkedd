@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import DashboardOverviewPage from './dashboard/DashboardOverviewPage';
 import DashboardLinksPage from './dashboard/DashboardLinksPage';
 import DashboardAnalyticsPage from './dashboard/DashboardAnalyticsPage';
+import DashboardLeadsPage from './dashboard/DashboardLeadsPage';
 import DashboardProfilePage from './dashboard/DashboardProfilePage';
 import DashboardDesignPage from './dashboard/DashboardDesignPage';
 import DashboardSettingsPage from './dashboard/DashboardSettingsPage';
@@ -109,6 +110,15 @@ export default function DashboardPage() {
           path="/analytics" 
           element={
             <DashboardAnalyticsPage 
+              profile={profile}
+              blocks={blocks}
+            />
+          } 
+        />
+        <Route 
+          path="/leads" 
+          element={
+            <DashboardLeadsPage 
               profile={profile}
               blocks={blocks}
             />

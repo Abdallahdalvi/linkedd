@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Video, Youtube, Play } from 'lucide-react';
+import DataCollectionSettings, { DataCollectionConfig } from './DataCollectionSettings';
 
 interface VideoBlockEditorProps {
   block?: Partial<Block>;
@@ -28,11 +29,18 @@ const getVideoThumbnail = (url: string): string => {
 };
 
 export default function VideoBlockEditor({ block, onSave, onCancel }: VideoBlockEditorProps) {
+  const existingContent = (block?.content || {}) as Record<string, unknown>;
   const [form, setForm] = useState({
     title: block?.title || '',
     subtitle: block?.subtitle || '',
     url: block?.url || '',
     thumbnail_url: block?.thumbnail_url || '',
+  });
+  const [dataCollection, setDataCollection] = useState<DataCollectionConfig>({
+    data_gate_enabled: (existingContent.data_gate_enabled as boolean) ?? false,
+    collect_name: (existingContent.collect_name as boolean) ?? true,
+    collect_email: (existingContent.collect_email as boolean) ?? true,
+    collect_phone: (existingContent.collect_phone as boolean) ?? false,
   });
 
   const handleUrlChange = (url: string) => {
@@ -52,7 +60,7 @@ export default function VideoBlockEditor({ block, onSave, onCancel }: VideoBlock
       subtitle: form.subtitle,
       url: form.url,
       thumbnail_url: form.thumbnail_url,
-      content: { video_type: getVideoType(form.url) },
+      content: { video_type: getVideoType(form.url), ...dataCollection },
     });
   };
 
@@ -141,6 +149,8 @@ export default function VideoBlockEditor({ block, onSave, onCancel }: VideoBlock
           placeholder="https://... (auto-fetched for YouTube)"
         />
       </div>
+
+      <DataCollectionSettings config={dataCollection} onChange={setDataCollection} />
 
       <div className="flex justify-end gap-2 pt-4">
         <Button type="button" variant="outline" onClick={onCancel}>
