@@ -9,6 +9,7 @@ import {
   Save,
   RotateCcw,
   Check,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -25,40 +26,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import MobilePreview from '@/components/MobilePreview';
+import { themePresets, themeCategories, type ThemePreset } from '@/config/themes';
+
+export { themePresets };
 
 interface DashboardDesignPageProps {
   profile: any;
   blocks: any[];
   onUpdateProfile: (updates: any) => Promise<void>;
 }
-
-export const themePresets = [
-  // Clean Solid Themes (Zaap-style)
-  { id: 'minimal', name: 'Minimal', bg: '#ffffff', text: '#1a1a1a', accent: '#1a1a1a', cardBg: '#f8f8f8', gradient: false },
-  { id: 'dark', name: 'Dark Mode', bg: '#0a0a0a', text: '#ffffff', accent: '#ffffff', cardBg: '#171717', gradient: false },
-  { id: 'slate', name: 'Slate', bg: '#0f172a', text: '#f1f5f9', accent: '#3b82f6', cardBg: '#1e293b', gradient: false },
-  { id: 'charcoal', name: 'Charcoal', bg: '#18181b', text: '#fafafa', accent: '#a1a1aa', cardBg: '#27272a', gradient: false },
-  { id: 'cream', name: 'Cream', bg: '#fefdf8', text: '#292524', accent: '#78716c', cardBg: '#ffffff', gradient: false },
-  { id: 'blush', name: 'Blush', bg: '#fdf2f8', text: '#831843', accent: '#ec4899', cardBg: '#ffffff', gradient: false },
-  { id: 'forest', name: 'Forest', bg: '#052e16', text: '#dcfce7', accent: '#22c55e', cardBg: '#14532d', gradient: false },
-  { id: 'ocean', name: 'Ocean', bg: '#0c4a6e', text: '#e0f2fe', accent: '#0ea5e9', cardBg: '#075985', gradient: false },
-  
-  // Bold Gradient Themes
-  { id: 'neon-nights', name: 'Neon Nights', bg: 'linear-gradient(135deg, #0f0f23 0%, #1a1a3e 50%, #2d1b69 100%)', text: '#ffffff', accent: '#f472b6', cardBg: 'rgba(15,15,35,0.9)', gradient: true },
-  { id: 'cyber-punk', name: 'Cyber Punk', bg: 'linear-gradient(135deg, #0d0d0d 0%, #1a0a2e 100%)', text: '#00ff88', accent: '#00ff88', cardBg: 'rgba(20,20,20,0.95)', gradient: true },
-  { id: 'sunset-glow', name: 'Sunset Glow', bg: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #fecfef 100%)', text: '#1a1a1a', accent: '#ec4899', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
-  { id: 'ocean-breeze', name: 'Ocean Breeze', bg: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', text: '#ffffff', accent: '#a78bfa', cardBg: 'rgba(30,30,60,0.9)', gradient: true },
-  { id: 'mint-fresh', name: 'Mint Fresh', bg: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)', text: '#1a1a1a', accent: '#14b8a6', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
-  { id: 'purple-haze', name: 'Purple Haze', bg: 'linear-gradient(180deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%)', text: '#ffffff', accent: '#c4b5fd', cardBg: 'rgba(30,27,75,0.9)', gradient: true },
-  { id: 'coral-reef', name: 'Coral Reef', bg: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', text: '#1a1a1a', accent: '#f43f5e', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
-  { id: 'aurora', name: 'Aurora', bg: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 50%, #667eea 100%)', text: '#1a1a1a', accent: '#10b981', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
-  { id: 'midnight-blue', name: 'Midnight', bg: 'linear-gradient(180deg, #020617 0%, #0f172a 50%, #1e293b 100%)', text: '#e2e8f0', accent: '#38bdf8', cardBg: 'rgba(15,23,42,0.95)', gradient: true },
-  { id: 'rose-gold', name: 'Rose Gold', bg: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)', text: '#7c2d12', accent: '#f97316', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
-  { id: 'electric-blue', name: 'Electric Blue', bg: 'linear-gradient(135deg, #0c1445 0%, #1e3a8a 50%, #3b82f6 100%)', text: '#ffffff', accent: '#60a5fa', cardBg: 'rgba(30,58,138,0.9)', gradient: true },
-  { id: 'emerald-glow', name: 'Emerald Glow', bg: 'linear-gradient(135deg, #022c22 0%, #064e3b 50%, #059669 100%)', text: '#d1fae5', accent: '#34d399', cardBg: 'rgba(6,78,59,0.9)', gradient: true },
-  { id: 'warm-sunset', name: 'Warm Sunset', bg: 'linear-gradient(135deg, #7c2d12 0%, #dc2626 50%, #f97316 100%)', text: '#ffffff', accent: '#fbbf24', cardBg: 'rgba(124,45,18,0.9)', gradient: true },
-  { id: 'lavender-dream', name: 'Lavender Dream', bg: 'linear-gradient(135deg, #ddd6fe 0%, #c4b5fd 50%, #a78bfa 100%)', text: '#1e1b4b', accent: '#7c3aed', cardBg: 'rgba(255,255,255,0.95)', gradient: true },
-];
 
 const backgroundTypes = [
   { id: 'solid', label: 'Solid Color' },
@@ -113,6 +89,14 @@ export default function DashboardDesignPage({
   const [buttonRadius, setButtonRadius] = useState([profile?.custom_colors?.buttonRadius || 16]);
   const [buttonStyle, setButtonStyle] = useState(profile?.custom_colors?.buttonStyle || 'filled');
   const [enableAnimations, setEnableAnimations] = useState(profile?.custom_colors?.animations !== false);
+  const [themeCategory, setThemeCategory] = useState('all');
+  const [themeSearch, setThemeSearch] = useState('');
+
+  const filteredThemes = themePresets.filter(t => {
+    const matchesCategory = themeCategory === 'all' || t.category === themeCategory;
+    const matchesSearch = !themeSearch || t.name.toLowerCase().includes(themeSearch.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   const currentTheme = themePresets.find(t => t.id === selectedTheme) || themePresets[0];
 
@@ -220,47 +204,109 @@ export default function DashboardDesignPage({
                 animate={{ opacity: 1, y: 0 }}
                 className="glass-card p-6"
               >
-                <h2 className="text-lg font-semibold text-foreground mb-4">Theme Presets</h2>
-                <p className="text-muted-foreground text-sm mb-6">
-                  Choose a pre-designed theme for your profile
-                </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground">Theme Presets</h2>
+                    <p className="text-muted-foreground text-sm">
+                      {themePresets.length} themes · Choose one for your profile
+                    </p>
+                  </div>
+                  <div className="relative w-full sm:w-56">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search themes..."
+                      value={themeSearch}
+                      onChange={(e) => setThemeSearch(e.target.value)}
+                      className="pl-9 h-9"
+                    />
+                  </div>
+                </div>
+
+                {/* Category Pills */}
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {themeCategories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      onClick={() => setThemeCategory(cat.id)}
+                      className={`px-3 py-1.5 text-xs font-medium rounded-full transition-all ${
+                        themeCategory === cat.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
                 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {themePresets.map((theme) => (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-[600px] overflow-y-auto pr-1 scrollbar-hide">
+                  {filteredThemes.map((theme) => (
                     <button
                       key={theme.id}
                       onClick={() => handleThemeChange(theme.id)}
-                      className={`relative p-4 rounded-xl border-2 transition-all ${
+                      className={`relative p-3 rounded-xl border-2 transition-all text-left ${
                         selectedTheme === theme.id 
                           ? 'border-primary bg-primary/5 ring-2 ring-primary/20' 
                           : 'border-border hover:border-primary/50'
                       }`}
                     >
+                      {/* Mini profile preview */}
                       <div 
-                        className="w-full h-20 rounded-lg mb-3 flex flex-col items-center justify-center gap-1 p-2"
-                        style={{ backgroundColor: theme.bg }}
+                        className="w-full h-24 rounded-lg mb-2 p-3 flex flex-col items-center justify-between overflow-hidden"
+                        style={{ background: theme.bg }}
                       >
-                        <div 
-                          className="w-8 h-8 rounded-full border-2"
-                          style={{ backgroundColor: theme.cardBg, borderColor: theme.accent }}
-                        />
-                        <div 
-                          className="w-full h-5 rounded"
-                          style={{ backgroundColor: theme.cardBg }}
-                        />
-                        <div 
-                          className="w-full h-5 rounded"
-                          style={{ backgroundColor: theme.accent }}
-                        />
+                        {/* Avatar + name */}
+                        <div className="flex items-center gap-1.5 w-full">
+                          <div 
+                            className="w-5 h-5 rounded-full flex-shrink-0 border"
+                            style={{ backgroundColor: theme.accent, borderColor: theme.accent }}
+                          />
+                          <div 
+                            className="h-2 rounded-full flex-1 max-w-[60px]"
+                            style={{ backgroundColor: theme.text, opacity: 0.7 }}
+                          />
+                        </div>
+                        {/* Link buttons */}
+                        <div className="w-full space-y-1">
+                          <div 
+                            className="w-full h-4 rounded"
+                            style={{ backgroundColor: theme.cardBg, border: `1px solid ${theme.accent}30` }}
+                          >
+                            <div className="h-full flex items-center justify-center">
+                              <div className="h-1.5 w-3/5 rounded-full" style={{ backgroundColor: theme.text, opacity: 0.5 }} />
+                            </div>
+                          </div>
+                          <div 
+                            className="w-full h-4 rounded"
+                            style={{ backgroundColor: theme.accent }}
+                          >
+                            <div className="h-full flex items-center justify-center">
+                              <div className="h-1.5 w-2/5 rounded-full" style={{ backgroundColor: theme.gradient ? '#ffffff' : theme.bg, opacity: 0.8 }} />
+                            </div>
+                          </div>
+                          <div 
+                            className="w-full h-4 rounded"
+                            style={{ backgroundColor: theme.cardBg, border: `1px solid ${theme.accent}30` }}
+                          >
+                            <div className="h-full flex items-center justify-center">
+                              <div className="h-1.5 w-1/2 rounded-full" style={{ backgroundColor: theme.text, opacity: 0.5 }} />
+                            </div>
+                          </div>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-foreground">{theme.name}</span>
+                        <span className="text-xs font-medium text-foreground truncate">{theme.name}</span>
                         {selectedTheme === theme.id && (
-                          <Check className="w-4 h-4 text-primary" />
+                          <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                         )}
                       </div>
                     </button>
                   ))}
+                  {filteredThemes.length === 0 && (
+                    <div className="col-span-full py-8 text-center text-muted-foreground text-sm">
+                      No themes match your search
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </TabsContent>
