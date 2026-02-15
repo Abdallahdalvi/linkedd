@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import DownloadAdModal from '@/components/DownloadAdModal';
 import DataCollectionGate from '@/components/blocks/DataCollectionGate';
+import { useTrackingPixels } from '@/hooks/useTrackingPixels';
 
 // Generate or retrieve a persistent visitor ID
 const getVisitorId = (): string => {
@@ -83,6 +84,8 @@ interface Profile {
   custom_colors: Record<string, string | boolean | number> | null;
   is_public: boolean;
   is_password_protected: boolean;
+  meta_pixel_id?: string | null;
+  google_ads_id?: string | null;
 }
 
 interface Block {
@@ -185,6 +188,11 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
   const [passwordError, setPasswordError] = useState('');
   const [verifyingPassword, setVerifyingPassword] = useState(false);
 
+  const { trackClick, trackLead } = useTrackingPixels({
+    metaPixelId: profile?.meta_pixel_id,
+    googleAdsId: profile?.google_ads_id,
+  });
+
   useEffect(() => {
     if (!username) return;
 
@@ -192,7 +200,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
       // First check if profile exists and if it's password protected
       const { data: profileData, error: profileError } = await supabase
         .from('link_profiles')
-        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, custom_colors, is_public, is_password_protected, total_views')
+        .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, custom_colors, is_public, is_password_protected, total_views, meta_pixel_id, google_ads_id')
         .eq('username', username)
         .eq('is_public', true)
         .maybeSingle();
@@ -329,6 +337,9 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
   const handleBlockClick = useCallback(async (block: Block) => {
     if (!block.url) return;
 
+    // Fire tracking pixel events
+    trackClick(block.title);
+
     // Track click and increment total_clicks
     const visitorId = getVisitorId();
     
@@ -364,7 +375,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
     } else {
       window.location.href = block.url;
     }
-  }, [profile?.id]);
+  }, [profile?.id, trackClick]);
 
   const getBackgroundStyle = () => {
     if (!profile) return {};
@@ -623,6 +634,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
                     theme={theme} 
                     onClick={() => handleBlockClick(block)} 
                     profileId={profile?.id}
+                    onLeadSubmit={() => trackLead(block.title)}
                   />
                 </motion.div>
               ))}
@@ -635,7 +647,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
   );
 }
 
-function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; theme: ThemeColors; onClick: () => void; profileId?: string }) {
+function BlockRenderer({ block, theme, onClick, profileId, onLeadSubmit }: { block: Block; theme: ThemeColors; onClick: () => void; profileId?: string; onLeadSubmit?: () => void }) {
   const [showAdModal, setShowAdModal] = useState(false);
   const [showDataGate, setShowDataGate] = useState(false);
   const buttonRadius = theme.buttonRadius || 16;
@@ -788,6 +800,7 @@ function BlockRenderer({ block, theme, onClick, profileId }: { block: Block; the
       theme={{ text: theme.text, accent: theme.accent, cardBg: theme.cardBg }}
       onComplete={() => {
         setShowDataGate(false);
+        onLeadSubmit?.();
         if (pendingActionRef.current) {
           pendingActionRef.current();
           pendingActionRef.current = null;
