@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { MAIN_DOMAIN, isDomainActive } from '@/config/domain';
 
 interface DomainRouterProps {

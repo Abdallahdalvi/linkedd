@@ -5,7 +5,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase as defaultSupabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { DomainRouter, useCustomDomainProfile } from "./components/DomainRouter";
 import { MAIN_DOMAIN, isDomainActive } from "./config/domain";
 import { bootstrapSupabaseConfig } from "@/lib/dynamic-supabase";
@@ -92,7 +93,7 @@ const App = () => {
 
   useEffect(() => {
     // On first load, check admin_settings for custom Supabase credentials
-    bootstrapSupabaseConfig(supabase).then((reloading) => {
+    bootstrapSupabaseConfig(defaultSupabase).then((reloading) => {
       if (!reloading) setReady(true);
     });
   }, []);
