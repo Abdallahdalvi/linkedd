@@ -1,78 +1,21 @@
 version: '3.8'
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: linkbio-db
-    restart: always
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-linkbio_root_2024}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-linkbio}
-      MYSQL_USER: ${MYSQL_USER:-linkbio_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-linkbio_pass_2024}
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - linkbio-net
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: linkbio-api
-    restart: always
-    environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_NAME: ${MYSQL_DATABASE:-linkbio}
-      DB_USER: ${MYSQL_USER:-linkbio_user}
-      DB_PASSWORD: ${MYSQL_PASSWORD:-linkbio_pass_2024}
-      JWT_SECRET: ${JWT_SECRET:-change-me-in-production-super-secret-key}
-      PORT: 3001
-      UPLOAD_DIR: /app/uploads
-      APP_NAME: ${APP_NAME:-LinkBio}
-      APP_DOMAIN: ${APP_DOMAIN:-localhost}
-      PRIMARY_COLOR: ${PRIMARY_COLOR:-#6366f1}
-    ports:
-      - "3001:3001"
-    volumes:
-      - uploads_data:/app/uploads
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - linkbio-net
-
   frontend:
     build:
       context: ..
       dockerfile: docker/frontend/Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://supabaselinks.dalvi.cloud}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY}
+        VITE_SUPABASE_PROJECT_ID: ${VITE_SUPABASE_PROJECT_ID:-default}
         VITE_APP_NAME: ${APP_NAME:-LinkBio}
     container_name: linkbio-frontend
     restart: always
     ports:
       - "80:80"
-      - "443:443"
-    volumes:
-      - uploads_data:/usr/share/nginx/uploads:ro
-    depends_on:
-      - api
     networks:
       - linkbio-net
-
-volumes:
-  mysql_data:
-  uploads_data:
 
 networks:
   linkbio-net:
