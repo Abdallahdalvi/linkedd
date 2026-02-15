@@ -28,6 +28,7 @@ import {
 import DatabaseExportSection from '@/components/settings/DatabaseExportSection';
 import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
 import { FullBackupExportSection } from '@/components/settings/FullBackupExportSection';
+import ImageUpload from '@/components/ImageUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -93,6 +94,7 @@ export default function DashboardSettingsPage({
   
   const [seoTitle, setSeoTitle] = useState(profile?.seo_title || '');
   const [seoDescription, setSeoDescription] = useState(profile?.seo_description || '');
+  const [ogImageUrl, setOgImageUrl] = useState(profile?.og_image_url || '');
 
   // Tracking pixel state
   const [metaPixelId, setMetaPixelId] = useState(profile?.meta_pixel_id || '');
@@ -170,6 +172,7 @@ export default function DashboardSettingsPage({
       await onUpdateProfile({
         seo_title: seoTitle,
         seo_description: seoDescription,
+        og_image_url: ogImageUrl || null,
       });
       toast.success('SEO settings saved!');
     } catch (error) {
@@ -920,14 +923,23 @@ export default function DashboardSettingsPage({
 
               <div>
                 <Label>Social Share Image (OG Image)</Label>
-                <div className="mt-2 h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                  <div className="text-center">
-                    <Globe className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Upload an image (1200x630 recommended)
-                    </p>
-                  </div>
-                </div>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">
+                  Recommended size: <strong>1200×630px</strong> (landscape, 1.91:1 ratio)
+                </p>
+                <ImageUpload
+                  currentImage={ogImageUrl || null}
+                  onUpload={(url) => setOgImageUrl(url)}
+                  folder="og-images"
+                  aspectRatio="cover"
+                  placeholder={
+                    <div className="text-center">
+                      <Globe className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        Click to upload (1200×630px)
+                      </p>
+                    </div>
+                  }
+                />
               </div>
 
               <Button 

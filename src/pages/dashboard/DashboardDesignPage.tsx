@@ -400,7 +400,10 @@ export default function DashboardDesignPage({
 
                   {backgroundType === 'image' && (
                     <div>
-                      <Label className="mb-2 block">Background Image</Label>
+                      <Label className="mb-1 block">Background Image</Label>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Recommended: <strong>1080×1920px</strong> (portrait, 9:16) or <strong>1080×1080px</strong> (square)
+                      </p>
                       <ImageUpload
                         currentImage={backgroundColor?.startsWith('http') ? backgroundColor : null}
                         onUpload={(url) => setBackgroundColor(url)}
@@ -410,7 +413,7 @@ export default function DashboardDesignPage({
                           <div className="text-center">
                             <Image className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                             <p className="text-sm text-muted-foreground">
-                              Click to upload background image
+                              Click to upload (1080×1920px)
                             </p>
                           </div>
                         }
