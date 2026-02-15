@@ -24,6 +24,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
 
 interface QueryResult {
   rows: Record<string, unknown>[];
@@ -135,6 +136,7 @@ export default function AdminDatabasePage() {
           <TabsTrigger value="editor" className="gap-2"><Terminal className="w-4 h-4" />SQL Editor</TabsTrigger>
           <TabsTrigger value="connection" className="gap-2"><Key className="w-4 h-4" />Connection Info</TabsTrigger>
           <TabsTrigger value="templates" className="gap-2"><BookOpen className="w-4 h-4" />Templates</TabsTrigger>
+          <TabsTrigger value="schema" className="gap-2"><Database className="w-4 h-4" />Schema Export</TabsTrigger>
         </TabsList>
 
         {/* SQL Editor Tab */}
@@ -327,6 +329,11 @@ export default function AdminDatabasePage() {
               </Card>
             ))}
           </div>
+        </TabsContent>
+
+        {/* Schema Export Tab */}
+        <TabsContent value="schema" className="space-y-4">
+          <SchemaExportSection />
         </TabsContent>
       </Tabs>
     </div>
