@@ -16,6 +16,7 @@ import {
   Blocks,
   FileText,
   Crown,
+  Database,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -35,6 +36,7 @@ const allNavItems = [
   { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, superOnly: false },
   { href: '/admin/domains', label: 'Domains', icon: Globe, superOnly: false },
   { href: '/admin/moderation', label: 'Moderation', icon: Shield, superOnly: false },
+  { href: '/admin/database', label: 'Database', icon: Database, superOnly: true },
   { href: '/admin/audit', label: 'Audit Log', icon: FileText, superOnly: true },
   { href: '/admin/settings', label: 'Settings', icon: Settings, superOnly: true },
 ];
