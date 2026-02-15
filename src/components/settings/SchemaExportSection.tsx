@@ -5,7 +5,341 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Database, Download, FileCode, Copy, Check, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ExportFormat = 'postgresql' | 'mysql' | 'sqlite' | 'mongodb';
+type ExportFormat = 'supabase' | 'postgresql' | 'mysql' | 'sqlite' | 'mongodb';
+
+const SUPABASE_SCHEMA = `-- =============================================
+-- LinkDC Complete Supabase Schema
+-- Run this in your Supabase SQL Editor (Dashboard > SQL Editor)
+-- =============================================
+
+-- ENUM TYPES
+CREATE TYPE app_role AS ENUM ('super_admin', 'admin', 'client');
+
+-- =============================================
+-- TABLES
+-- =============================================
+
+-- Profiles table (synced with auth.users)
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT NOT NULL,
+    full_name TEXT,
+    avatar_url TEXT,
+    role app_role NOT NULL DEFAULT 'client',
+    is_verified BOOLEAN DEFAULT false,
+    is_suspended BOOLEAN DEFAULT false,
+    last_login_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- User roles table
+CREATE TABLE public.user_roles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    role app_role NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE(user_id, role)
+);
+
+-- Link profiles table (public bio pages)
+CREATE TABLE public.link_profiles (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    username TEXT NOT NULL UNIQUE,
+    display_name TEXT,
+    bio TEXT,
+    avatar_url TEXT,
+    cover_url TEXT,
+    location TEXT,
+    theme_preset TEXT DEFAULT 'default',
+    custom_colors JSONB DEFAULT '{}',
+    custom_fonts JSONB DEFAULT '{}',
+    background_type TEXT DEFAULT 'solid',
+    background_value TEXT DEFAULT '#ffffff',
+    social_links JSONB DEFAULT '{}',
+    seo_title TEXT,
+    seo_description TEXT,
+    og_image_url TEXT,
+    meta_pixel_id TEXT,
+    google_ads_id TEXT,
+    is_public BOOLEAN DEFAULT true,
+    is_password_protected BOOLEAN DEFAULT false,
+    password_hash TEXT,
+    total_views INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Blocks table (content blocks)
+CREATE TABLE public.blocks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id UUID NOT NULL REFERENCES public.link_profiles(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    title TEXT,
+    subtitle TEXT,
+    url TEXT,
+    thumbnail_url TEXT,
+    icon TEXT,
+    content JSONB DEFAULT '{}',
+    button_style JSONB DEFAULT '{}',
+    is_enabled BOOLEAN DEFAULT true,
+    is_featured BOOLEAN DEFAULT false,
+    open_in_new_tab BOOLEAN DEFAULT true,
+    mobile_only BOOLEAN DEFAULT false,
+    desktop_only BOOLEAN DEFAULT false,
+    schedule_start TIMESTAMPTZ,
+    schedule_end TIMESTAMPTZ,
+    position INTEGER DEFAULT 0,
+    total_clicks INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Block leads table
+CREATE TABLE public.block_leads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    block_id UUID NOT NULL REFERENCES public.blocks(id) ON DELETE CASCADE,
+    profile_id UUID NOT NULL REFERENCES public.link_profiles(id) ON DELETE CASCADE,
+    name TEXT,
+    email TEXT,
+    phone TEXT,
+    visitor_id TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Custom domains table
+CREATE TABLE public.custom_domains (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id UUID NOT NULL REFERENCES public.link_profiles(id) ON DELETE CASCADE,
+    domain VARCHAR NOT NULL UNIQUE,
+    is_primary BOOLEAN DEFAULT false,
+    dns_verified BOOLEAN DEFAULT false,
+    status VARCHAR NOT NULL DEFAULT 'pending',
+    verification_token VARCHAR,
+    ssl_status VARCHAR DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Analytics events table
+CREATE TABLE public.analytics_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    profile_id UUID REFERENCES public.link_profiles(id) ON DELETE SET NULL,
+    block_id UUID REFERENCES public.blocks(id) ON DELETE SET NULL,
+    event_type TEXT NOT NULL,
+    visitor_id TEXT,
+    country TEXT,
+    city TEXT,
+    device_type TEXT,
+    browser TEXT,
+    referrer TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Audit logs table
+CREATE TABLE public.audit_logs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID,
+    action TEXT NOT NULL,
+    entity_type TEXT,
+    entity_id UUID,
+    details JSONB DEFAULT '{}',
+    ip_address TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Admin settings table
+CREATE TABLE public.admin_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    setting_key TEXT NOT NULL UNIQUE,
+    setting_value JSONB NOT NULL,
+    updated_by UUID,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- =============================================
+-- INDEXES
+-- =============================================
+CREATE INDEX idx_user_roles_user_id ON public.user_roles(user_id);
+CREATE INDEX idx_link_profiles_user_id ON public.link_profiles(user_id);
+CREATE INDEX idx_link_profiles_username ON public.link_profiles(username);
+CREATE INDEX idx_blocks_profile_id ON public.blocks(profile_id);
+CREATE INDEX idx_blocks_position ON public.blocks(profile_id, position);
+CREATE INDEX idx_custom_domains_profile_id ON public.custom_domains(profile_id);
+CREATE INDEX idx_custom_domains_domain ON public.custom_domains(domain);
+CREATE INDEX idx_analytics_profile_id ON public.analytics_events(profile_id);
+CREATE INDEX idx_analytics_created_at ON public.analytics_events(created_at);
+CREATE INDEX idx_audit_logs_user_id ON public.audit_logs(user_id);
+CREATE INDEX idx_audit_logs_created_at ON public.audit_logs(created_at);
+CREATE INDEX idx_block_leads_block_id ON public.block_leads(block_id);
+CREATE INDEX idx_block_leads_profile_id ON public.block_leads(profile_id);
+
+-- =============================================
+-- FUNCTIONS
+-- =============================================
+CREATE OR REPLACE FUNCTION public.update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = now();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SET search_path = public;
+
+CREATE OR REPLACE FUNCTION public.has_role(_user_id UUID, _role app_role)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role = _role
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION public.is_admin(_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.user_roles
+    WHERE user_id = _user_id AND role IN ('super_admin', 'admin')
+  );
+$$;
+
+-- Auto-create profile on signup
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, avatar_url)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data ->> 'full_name', NEW.email),
+    NEW.raw_user_meta_data ->> 'avatar_url'
+  );
+  INSERT INTO public.user_roles (user_id, role) VALUES (NEW.id, 'client');
+  RETURN NEW;
+END;
+$$;
+
+-- =============================================
+-- TRIGGERS
+-- =============================================
+CREATE TRIGGER update_profiles_updated_at
+    BEFORE UPDATE ON public.profiles
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_link_profiles_updated_at
+    BEFORE UPDATE ON public.link_profiles
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_blocks_updated_at
+    BEFORE UPDATE ON public.blocks
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_custom_domains_updated_at
+    BEFORE UPDATE ON public.custom_domains
+    FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+-- Auth trigger: auto-create profile on signup
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- =============================================
+-- ROW LEVEL SECURITY (RLS)
+-- =============================================
+
+-- Profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (is_admin(auth.uid()));
+CREATE POLICY "Admins can update all profiles" ON public.profiles FOR UPDATE USING (is_admin(auth.uid()));
+
+-- User Roles
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own roles" ON public.user_roles FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage roles" ON public.user_roles FOR ALL USING (is_admin(auth.uid()));
+
+-- Link Profiles
+ALTER TABLE public.link_profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public profiles are viewable by everyone" ON public.link_profiles FOR SELECT USING (is_public = true);
+CREATE POLICY "Users can manage own link profiles" ON public.link_profiles FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Admins can manage all link profiles" ON public.link_profiles FOR ALL USING (is_admin(auth.uid()));
+
+-- Blocks
+ALTER TABLE public.blocks ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public blocks are viewable" ON public.blocks FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.link_profiles WHERE id = blocks.profile_id AND is_public = true));
+CREATE POLICY "Users can manage own blocks" ON public.blocks FOR ALL
+  USING (EXISTS (SELECT 1 FROM public.link_profiles WHERE id = blocks.profile_id AND user_id = auth.uid()));
+CREATE POLICY "Admins can manage all blocks" ON public.blocks FOR ALL USING (is_admin(auth.uid()));
+
+-- Block Leads
+ALTER TABLE public.block_leads ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can submit lead data" ON public.block_leads FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can view own leads" ON public.block_leads FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.link_profiles WHERE id = block_leads.profile_id AND user_id = auth.uid()));
+CREATE POLICY "Users can delete own leads" ON public.block_leads FOR DELETE
+  USING (EXISTS (SELECT 1 FROM public.link_profiles WHERE id = block_leads.profile_id AND user_id = auth.uid()));
+CREATE POLICY "Admins can view all leads" ON public.block_leads FOR SELECT USING (is_admin(auth.uid()));
+
+-- Custom Domains
+ALTER TABLE public.custom_domains ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view their own domains" ON public.custom_domains FOR SELECT
+  USING (profile_id IN (SELECT id FROM public.link_profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can insert their own domains" ON public.custom_domains FOR INSERT
+  WITH CHECK (profile_id IN (SELECT id FROM public.link_profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can update their own domains" ON public.custom_domains FOR UPDATE
+  USING (profile_id IN (SELECT id FROM public.link_profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Users can delete their own domains" ON public.custom_domains FOR DELETE
+  USING (profile_id IN (SELECT id FROM public.link_profiles WHERE user_id = auth.uid()));
+CREATE POLICY "Public can read active domains" ON public.custom_domains FOR SELECT USING (status = 'active');
+CREATE POLICY "Admins can view all domains" ON public.custom_domains FOR SELECT USING (is_admin(auth.uid()));
+CREATE POLICY "Admins can manage all domains" ON public.custom_domains FOR ALL USING (is_admin(auth.uid()));
+
+-- Analytics Events
+ALTER TABLE public.analytics_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Anyone can insert analytics" ON public.analytics_events FOR INSERT WITH CHECK (true);
+CREATE POLICY "Users can view own analytics" ON public.analytics_events FOR SELECT
+  USING (EXISTS (SELECT 1 FROM public.link_profiles WHERE id = analytics_events.profile_id AND user_id = auth.uid()));
+CREATE POLICY "Admins can view all analytics" ON public.analytics_events FOR SELECT USING (is_admin(auth.uid()));
+
+-- Audit Logs
+ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "System can insert audit logs" ON public.audit_logs FOR INSERT WITH CHECK (true);
+CREATE POLICY "Admins can view audit logs" ON public.audit_logs FOR SELECT USING (is_admin(auth.uid()));
+
+-- Admin Settings
+ALTER TABLE public.admin_settings ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Admins can manage settings" ON public.admin_settings FOR ALL USING (is_admin(auth.uid()));
+
+-- =============================================
+-- STORAGE BUCKET
+-- =============================================
+INSERT INTO storage.buckets (id, name, public) VALUES ('profile-images', 'profile-images', true);
+
+CREATE POLICY "Anyone can view profile images"
+  ON storage.objects FOR SELECT USING (bucket_id = 'profile-images');
+
+CREATE POLICY "Authenticated users can upload profile images"
+  ON storage.objects FOR INSERT
+  WITH CHECK (bucket_id = 'profile-images' AND auth.role() = 'authenticated');
+
+CREATE POLICY "Users can update own profile images"
+  ON storage.objects FOR UPDATE
+  USING (bucket_id = 'profile-images' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+CREATE POLICY "Users can delete own profile images"
+  ON storage.objects FOR DELETE
+  USING (bucket_id = 'profile-images' AND auth.uid()::text = (storage.foldername(name))[1]);
+`;
 
 const POSTGRESQL_SCHEMA = `-- =============================================
 -- LinkDC Complete PostgreSQL Schema
@@ -604,11 +938,13 @@ console.log("MongoDB schema setup complete!");
 `;
 
 export function SchemaExportSection() {
-  const [format, setFormat] = useState<ExportFormat>('postgresql');
+  const [format, setFormat] = useState<ExportFormat>('supabase');
   const [copied, setCopied] = useState(false);
 
   const getSchema = () => {
     switch (format) {
+      case 'supabase':
+        return SUPABASE_SCHEMA;
       case 'postgresql':
         return POSTGRESQL_SCHEMA;
       case 'mysql':
@@ -618,7 +954,7 @@ export function SchemaExportSection() {
       case 'mongodb':
         return MONGODB_SCHEMA;
       default:
-        return POSTGRESQL_SCHEMA;
+        return SUPABASE_SCHEMA;
     }
   };
 
@@ -669,6 +1005,7 @@ export function SchemaExportSection() {
               <SelectValue placeholder="Select format" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="supabase">Supabase (Recommended)</SelectItem>
               <SelectItem value="postgresql">PostgreSQL</SelectItem>
               <SelectItem value="mysql">MySQL</SelectItem>
               <SelectItem value="sqlite">SQLite</SelectItem>
