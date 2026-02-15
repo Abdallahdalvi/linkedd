@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Database, Key, Copy, AlertTriangle, Pencil, Save, X } from 'lucide-react';
+import { Database, Key, Copy, AlertTriangle, Pencil, Save, X, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,17 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from '@/lib/dynamic-supabase';
 import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
 
 export default function AdminDatabasePage() {
-  const currentProjectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || '';
-  const currentAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || '';
-  const currentUrl = import.meta.env.VITE_SUPABASE_URL || '';
+  const config = getSupabaseConfig();
 
   const [editing, setEditing] = useState(false);
-  const [editProjectId, setEditProjectId] = useState(currentProjectId);
-  const [editUrl, setEditUrl] = useState(currentUrl);
-  const [editAnonKey, setEditAnonKey] = useState(currentAnonKey);
+  const [editProjectId, setEditProjectId] = useState(config.projectId);
+  const [editUrl, setEditUrl] = useState(config.url);
+  const [editAnonKey, setEditAnonKey] = useState(config.anonKey);
   const [saving, setSaving] = useState(false);
 
   const copyToClipboard = (text: string) => {
@@ -27,15 +26,13 @@ export default function AdminDatabasePage() {
   };
 
   const handleEdit = () => {
-    setEditProjectId(currentProjectId);
-    setEditUrl(currentUrl);
-    setEditAnonKey(currentAnonKey);
+    setEditProjectId(config.projectId);
+    setEditUrl(config.url);
+    setEditAnonKey(config.anonKey);
     setEditing(true);
   };
 
-  const handleCancel = () => {
-    setEditing(false);
-  };
+  const handleCancel = () => setEditing(false);
 
   const handleSave = async () => {
     if (!editProjectId.trim() || !editUrl.trim() || !editAnonKey.trim()) {
@@ -45,8 +42,8 @@ export default function AdminDatabasePage() {
 
     setSaving(true);
     try {
+      // Save to admin_settings for persistence
       const { data: { user } } = await supabase.auth.getUser();
-      
       await supabase.from('admin_settings').upsert(
         {
           setting_key: 'custom_supabase_connection',
@@ -61,13 +58,26 @@ export default function AdminDatabasePage() {
         { onConflict: 'setting_key' }
       );
 
-      toast.success('Connection saved! Update your environment variables to apply changes.', { duration: 6000 });
-      setEditing(false);
+      // Save to localStorage for immediate effect
+      saveSupabaseConfig({
+        projectId: editProjectId.trim(),
+        url: editUrl.trim(),
+        anonKey: editAnonKey.trim(),
+      });
+
+      toast.success('Connection updated! Reloading...', { duration: 2000 });
+      setTimeout(() => window.location.reload(), 1500);
     } catch (err: any) {
       toast.error(err.message || 'Failed to save');
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleReset = () => {
+    clearSupabaseConfig();
+    toast.success('Reset to default credentials. Reloading...');
+    setTimeout(() => window.location.reload(), 1500);
   };
 
   return (
@@ -91,23 +101,36 @@ export default function AdminDatabasePage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2"><Key className="w-5 h-5" />Connection Details</CardTitle>
-              <CardDescription>Your database connection credentials for external tools</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="w-5 h-5" />
+                Connection Details
+                {config.isOverride && (
+                  <Badge variant="secondary" className="ml-2 text-xs">Custom</Badge>
+                )}
+              </CardTitle>
+              <CardDescription>Your database connection credentials — editable by super admin</CardDescription>
             </div>
-            {!editing ? (
-              <Button variant="outline" size="sm" onClick={handleEdit}>
-                <Pencil className="w-4 h-4 mr-1" /> Edit
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleCancel}>
-                  <X className="w-4 h-4 mr-1" /> Cancel
+            <div className="flex gap-2">
+              {config.isOverride && !editing && (
+                <Button variant="ghost" size="sm" onClick={handleReset}>
+                  <RotateCcw className="w-4 h-4 mr-1" /> Reset to Default
                 </Button>
-                <Button size="sm" onClick={handleSave} disabled={saving}>
-                  <Save className="w-4 h-4 mr-1" /> {saving ? 'Saving...' : 'Save'}
+              )}
+              {!editing ? (
+                <Button variant="outline" size="sm" onClick={handleEdit}>
+                  <Pencil className="w-4 h-4 mr-1" /> Edit
                 </Button>
-              </div>
-            )}
+              ) : (
+                <>
+                  <Button variant="outline" size="sm" onClick={handleCancel}>
+                    <X className="w-4 h-4 mr-1" /> Cancel
+                  </Button>
+                  <Button size="sm" onClick={handleSave} disabled={saving}>
+                    <Save className="w-4 h-4 mr-1" /> {saving ? 'Saving...' : 'Save & Apply'}
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -116,12 +139,12 @@ export default function AdminDatabasePage() {
             <div className="flex items-center gap-2 mt-1">
               <Input
                 readOnly={!editing}
-                value={editing ? editProjectId : currentProjectId}
+                value={editing ? editProjectId : config.projectId}
                 onChange={(e) => setEditProjectId(e.target.value)}
                 className="font-mono text-sm"
                 placeholder="your-project-id"
               />
-              <Button variant="outline" size="icon" onClick={() => copyToClipboard(editing ? editProjectId : currentProjectId)}>
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(editing ? editProjectId : config.projectId)}>
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
@@ -131,12 +154,12 @@ export default function AdminDatabasePage() {
             <div className="flex items-center gap-2 mt-1">
               <Input
                 readOnly={!editing}
-                value={editing ? editUrl : currentUrl}
+                value={editing ? editUrl : config.url}
                 onChange={(e) => setEditUrl(e.target.value)}
                 className="font-mono text-sm"
                 placeholder="https://your-project.supabase.co"
               />
-              <Button variant="outline" size="icon" onClick={() => copyToClipboard(editing ? editUrl : currentUrl)}>
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(editing ? editUrl : config.url)}>
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
@@ -146,36 +169,25 @@ export default function AdminDatabasePage() {
             <div className="flex items-center gap-2 mt-1">
               <Input
                 readOnly={!editing}
-                value={editing ? editAnonKey : currentAnonKey}
+                value={editing ? editAnonKey : config.anonKey}
                 onChange={(e) => setEditAnonKey(e.target.value)}
                 type={editing ? 'text' : 'password'}
                 className="font-mono text-sm"
                 placeholder="eyJhbGciOiJIUzI1NiIs..."
               />
-              <Button variant="outline" size="icon" onClick={() => copyToClipboard(editing ? editAnonKey : currentAnonKey)}>
+              <Button variant="outline" size="icon" onClick={() => copyToClipboard(editing ? editAnonKey : config.anonKey)}>
                 <Copy className="w-4 h-4" />
               </Button>
             </div>
           </div>
 
-          {editing && (
-            <Alert className="border-blue-500/30 bg-blue-500/5">
-              <AlertTriangle className="w-4 h-4 text-blue-500" />
-              <AlertDescription className="text-blue-700 dark:text-blue-400">
-                Saving here stores the new credentials in the database. To apply them, update your <strong>.env</strong> file with:<br />
-                <code className="text-xs mt-1 block font-mono">
-                  VITE_SUPABASE_PROJECT_ID="{editProjectId}"<br />
-                  VITE_SUPABASE_URL="{editUrl}"<br />
-                  VITE_SUPABASE_PUBLISHABLE_KEY="{editAnonKey}"
-                </code>
-              </AlertDescription>
-            </Alert>
-          )}
-
           <Alert>
             <Key className="w-4 h-4" />
             <AlertDescription>
-              The <strong>Service Role Key</strong> is stored securely on the server and is never exposed to the client.
+              {config.isOverride
+                ? <>Using <strong>custom credentials</strong>. Click "Reset to Default" to revert to the original connection.</>
+                : <>The <strong>Service Role Key</strong> is stored securely on the server and is never exposed to the client.</>
+              }
             </AlertDescription>
           </Alert>
         </CardContent>

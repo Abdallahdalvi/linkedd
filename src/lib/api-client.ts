@@ -10,7 +10,21 @@
  *   const { token } = await api.auth.login('a@b.com', 'pass');
  */
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase as defaultSupabase } from '@/integrations/supabase/client';
+import { getDynamicSupabaseClient, getSupabaseConfig } from '@/lib/dynamic-supabase';
+
+// Use dynamic client if override exists, otherwise default
+function getSupabase() {
+  const config = getSupabaseConfig();
+  return config.isOverride ? getDynamicSupabaseClient() : defaultSupabase;
+}
+
+// Proxy: lazily resolve the client on each call
+const supabase = new Proxy({} as typeof defaultSupabase, {
+  get(_target, prop) {
+    return (getSupabase() as any)[prop];
+  },
+});
 
 // ─── Config ───
 type ApiMode = 'supabase' | 'rest';
