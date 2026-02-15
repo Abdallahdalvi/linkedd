@@ -77,9 +77,11 @@ const defaultTheme = {
 const getThemeColors = (profile: LinkProfile | null) => {
   if (!profile?.custom_colors) return defaultTheme;
   const colors = profile.custom_colors as Record<string, string | boolean | number>;
+  // textColor override takes priority over theme text color
+  const textColor = (colors.textColor as string) || (colors.text as string) || defaultTheme.text;
   return {
     bg: (colors.bg as string) || defaultTheme.bg,
-    text: (colors.text as string) || defaultTheme.text,
+    text: textColor,
     accent: (colors.accent as string) || defaultTheme.accent,
     cardBg: (colors.cardBg as string) || defaultTheme.cardBg,
     gradient: Boolean(colors.gradient),
