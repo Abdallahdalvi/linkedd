@@ -24,6 +24,8 @@ export interface LinkProfile {
   is_public: boolean;
   is_password_protected: boolean;
   total_views: number;
+  meta_pixel_id: string | null;
+  google_ads_id: string | null;
   created_at: string;
   updated_at: string;
 }

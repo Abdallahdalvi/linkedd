@@ -314,10 +314,12 @@ export type Database = {
           custom_colors: Json | null
           custom_fonts: Json | null
           display_name: string | null
+          google_ads_id: string | null
           id: string
           is_password_protected: boolean | null
           is_public: boolean | null
           location: string | null
+          meta_pixel_id: string | null
           og_image_url: string | null
           password_hash: string | null
           seo_description: string | null
@@ -339,10 +341,12 @@ export type Database = {
           custom_colors?: Json | null
           custom_fonts?: Json | null
           display_name?: string | null
+          google_ads_id?: string | null
           id?: string
           is_password_protected?: boolean | null
           is_public?: boolean | null
           location?: string | null
+          meta_pixel_id?: string | null
           og_image_url?: string | null
           password_hash?: string | null
           seo_description?: string | null
@@ -364,10 +368,12 @@ export type Database = {
           custom_colors?: Json | null
           custom_fonts?: Json | null
           display_name?: string | null
+          google_ads_id?: string | null
           id?: string
           is_password_protected?: boolean | null
           is_public?: boolean | null
           location?: string | null
+          meta_pixel_id?: string | null
           og_image_url?: string | null
           password_hash?: string | null
           seo_description?: string | null

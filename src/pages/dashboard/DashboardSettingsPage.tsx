@@ -23,6 +23,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  BarChart3,
 } from 'lucide-react';
 import DatabaseExportSection from '@/components/settings/DatabaseExportSection';
 import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
@@ -92,6 +93,10 @@ export default function DashboardSettingsPage({
   
   const [seoTitle, setSeoTitle] = useState(profile?.seo_title || '');
   const [seoDescription, setSeoDescription] = useState(profile?.seo_description || '');
+
+  // Tracking pixel state
+  const [metaPixelId, setMetaPixelId] = useState(profile?.meta_pixel_id || '');
+  const [googleAdsId, setGoogleAdsId] = useState(profile?.google_ads_id || '');
 
   // Change password state
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
@@ -441,6 +446,10 @@ export default function DashboardSettingsPage({
           <TabsTrigger value="seo" className="flex items-center gap-2">
             <Globe className="w-4 h-4" />
             SEO
+          </TabsTrigger>
+          <TabsTrigger value="tracking" className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4" />
+            Tracking
           </TabsTrigger>
           <TabsTrigger value="account" className="flex items-center gap-2">
             <Key className="w-4 h-4" />
@@ -928,6 +937,72 @@ export default function DashboardSettingsPage({
               >
                 <Save className="w-4 h-4 mr-2" />
                 {saving ? 'Saving...' : 'Save SEO Settings'}
+              </Button>
+            </div>
+          </motion.div>
+        </TabsContent>
+
+        {/* Tracking Tab */}
+        <TabsContent value="tracking">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card p-6 max-w-2xl"
+          >
+            <h2 className="text-lg font-semibold text-foreground mb-6 flex items-center gap-2">
+              <BarChart3 className="w-5 h-5 text-primary" />
+              Tracking Pixels
+            </h2>
+            <p className="text-muted-foreground text-sm mb-6">
+              Add your Meta Pixel and Google Ads tracking IDs to track page views, link clicks, and lead submissions on your profile.
+            </p>
+            
+            <div className="space-y-6">
+              <div>
+                <Label>Meta Pixel ID</Label>
+                <Input 
+                  value={metaPixelId}
+                  onChange={(e) => setMetaPixelId(e.target.value)}
+                  placeholder="e.g. 1234567890123456"
+                  className="mt-2 font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Find this in your Meta Events Manager → Data Sources → Pixel ID
+                </p>
+              </div>
+
+              <div>
+                <Label>Google Ads Tag ID</Label>
+                <Input 
+                  value={googleAdsId}
+                  onChange={(e) => setGoogleAdsId(e.target.value)}
+                  placeholder="e.g. AW-1234567890"
+                  className="mt-2 font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Find this in Google Ads → Tools → Conversions → Tag setup
+                </p>
+              </div>
+
+              <Button 
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await onUpdateProfile({
+                      meta_pixel_id: metaPixelId || null,
+                      google_ads_id: googleAdsId || null,
+                    });
+                    toast.success('Tracking settings saved!');
+                  } catch (error) {
+                    toast.error('Failed to save tracking settings');
+                  }
+                  setSaving(false);
+                }}
+                disabled={saving}
+                className="gradient-primary text-primary-foreground"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {saving ? 'Saving...' : 'Save Tracking Settings'}
               </Button>
             </div>
           </motion.div>
