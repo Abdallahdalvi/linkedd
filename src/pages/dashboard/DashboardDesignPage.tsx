@@ -26,6 +26,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import MobilePreview from '@/components/MobilePreview';
+import ImageUpload from '@/components/ImageUpload';
 import { themePresets, themeCategories, type ThemePreset } from '@/config/themes';
 
 export { themePresets };
@@ -91,6 +92,7 @@ export default function DashboardDesignPage({
   const [enableAnimations, setEnableAnimations] = useState(profile?.custom_colors?.animations !== false);
   const [themeCategory, setThemeCategory] = useState('all');
   const [themeSearch, setThemeSearch] = useState('');
+  const [textColor, setTextColor] = useState(profile?.custom_colors?.textColor || '');
 
   const filteredThemes = themePresets.filter(t => {
     const matchesCategory = themeCategory === 'all' || t.category === themeCategory;
@@ -120,6 +122,7 @@ export default function DashboardDesignPage({
           buttonRadius: buttonRadius[0],
           buttonStyle,
           animations: enableAnimations,
+          textColor: textColor || undefined,
           ...currentTheme,
         },
       });
@@ -140,6 +143,7 @@ export default function DashboardDesignPage({
       buttonRadius: buttonRadius[0],
       buttonStyle,
       animations: enableAnimations,
+      textColor: textColor || undefined,
       ...currentTheme,
     },
   };
@@ -395,13 +399,22 @@ export default function DashboardDesignPage({
                   )}
 
                   {backgroundType === 'image' && (
-                    <div className="h-32 rounded-xl border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors">
-                      <div className="text-center">
-                        <Image className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                        <p className="text-sm text-muted-foreground">
-                          Click to upload background image
-                        </p>
-                      </div>
+                    <div>
+                      <Label className="mb-2 block">Background Image</Label>
+                      <ImageUpload
+                        currentImage={backgroundColor?.startsWith('http') ? backgroundColor : null}
+                        onUpload={(url) => setBackgroundColor(url)}
+                        folder="backgrounds"
+                        aspectRatio="cover"
+                        placeholder={
+                          <div className="text-center">
+                            <Image className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                            <p className="text-sm text-muted-foreground">
+                              Click to upload background image
+                            </p>
+                          </div>
+                        }
+                      />
                     </div>
                   )}
                 </div>
@@ -544,12 +557,55 @@ export default function DashboardDesignPage({
                     </Select>
                   </div>
 
+                  {/* Text Color */}
+                  <div className="pt-4 border-t border-border">
+                    <Label>Text Color</Label>
+                    <p className="text-xs text-muted-foreground mb-3">Override the theme's text color</p>
+                    <div className="flex items-center gap-4">
+                      <input
+                        type="color"
+                        value={textColor || currentTheme.text}
+                        onChange={(e) => setTextColor(e.target.value)}
+                        className="w-10 h-10 rounded-lg border border-border cursor-pointer bg-transparent"
+                      />
+                      <Input
+                        type="text"
+                        value={textColor || ''}
+                        onChange={(e) => setTextColor(e.target.value)}
+                        placeholder={`Theme default: ${currentTheme.text}`}
+                        className="w-40 font-mono text-sm"
+                      />
+                      {textColor && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setTextColor('')}
+                          className="text-xs"
+                        >
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      {['#000000', '#1a1a1a', '#333333', '#ffffff', '#f5f5f5', '#e0e0e0', '#ef4444', '#3b82f6'].map((color) => (
+                        <button
+                          key={color}
+                          onClick={() => setTextColor(color)}
+                          className={`w-7 h-7 rounded-full border-2 transition-all ${
+                            textColor === color ? 'border-primary scale-110' : 'border-border'
+                          }`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
+                  </div>
+
                   <div className="pt-4 border-t border-border">
                     <h3 className="font-medium text-foreground mb-4">Preview</h3>
-                    <div className="space-y-2">
+                    <div className="space-y-2" style={{ color: textColor || currentTheme.text }}>
                       <h1 className="text-2xl font-display font-bold">Heading Preview</h1>
-                      <p className="text-foreground">Body text looks like this paragraph.</p>
-                      <p className="text-sm text-muted-foreground">Small text for descriptions.</p>
+                      <p>Body text looks like this paragraph.</p>
+                      <p className="text-sm opacity-60">Small text for descriptions.</p>
                     </div>
                   </div>
                 </div>
