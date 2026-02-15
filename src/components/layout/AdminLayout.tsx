@@ -15,32 +15,37 @@ import {
   BarChart3,
   Blocks,
   FileText,
+  Crown,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 
 interface AdminLayoutProps {
   children: ReactNode;
+  isSuperAdmin?: boolean;
 }
 
-const navItems = [
-  { href: '/admin', label: 'Overview', icon: LayoutDashboard },
-  { href: '/admin/users', label: 'Users', icon: Users },
-  { href: '/admin/design-system', label: 'Design System', icon: Palette },
-  { href: '/admin/blocks', label: 'Block Controls', icon: Blocks },
-  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/admin/domains', label: 'Domains', icon: Globe },
-  { href: '/admin/moderation', label: 'Moderation', icon: Shield },
-  { href: '/admin/audit', label: 'Audit Log', icon: FileText },
-  { href: '/admin/settings', label: 'Settings', icon: Settings },
+const allNavItems = [
+  { href: '/admin', label: 'Overview', icon: LayoutDashboard, superOnly: false },
+  { href: '/admin/users', label: 'Users', icon: Users, superOnly: false },
+  { href: '/admin/design-system', label: 'Design System', icon: Palette, superOnly: true },
+  { href: '/admin/blocks', label: 'Block Controls', icon: Blocks, superOnly: true },
+  { href: '/admin/analytics', label: 'Analytics', icon: BarChart3, superOnly: false },
+  { href: '/admin/domains', label: 'Domains', icon: Globe, superOnly: false },
+  { href: '/admin/moderation', label: 'Moderation', icon: Shield, superOnly: false },
+  { href: '/admin/audit', label: 'Audit Log', icon: FileText, superOnly: true },
+  { href: '/admin/settings', label: 'Settings', icon: Settings, superOnly: true },
 ];
 
-export default function AdminLayout({ children }: AdminLayoutProps) {
+export default function AdminLayout({ children, isSuperAdmin = false }: AdminLayoutProps) {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navItems = allNavItems.filter(item => !item.superOnly || isSuperAdmin);
 
   const handleSignOut = async () => {
     await signOut();
@@ -94,13 +99,17 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           {/* Logo */}
           <div className="flex items-center gap-3 h-16 px-6 border-b border-white/10">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <Shield className="w-5 h-5 text-white" />
+              {isSuperAdmin ? (
+                <Crown className="w-5 h-5 text-amber-400" />
+              ) : (
+                <Shield className="w-5 h-5 text-white" />
+              )}
             </div>
             <div>
               <span className="font-display font-bold text-xl">LinkBio</span>
-              <span className="ml-2 text-xs px-2 py-0.5 bg-primary/20 rounded-full">
-                Admin
-              </span>
+              <Badge className={`ml-2 text-xs ${isSuperAdmin ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-primary/20 text-primary-foreground border-primary/30'}`}>
+                {isSuperAdmin ? 'Super Admin' : 'Admin'}
+              </Badge>
             </div>
           </div>
 
@@ -145,7 +154,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                   {user?.user_metadata?.full_name || 'Admin User'}
                 </p>
                 <p className="text-xs text-white/60 truncate">
-                  Super Admin
+                  {isSuperAdmin ? 'Super Admin' : 'Admin'}
                 </p>
               </div>
             </div>
