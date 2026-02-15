@@ -63,6 +63,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserRole } from '@/hooks/useUserRole';
 
 interface User {
   id: string;
@@ -79,6 +80,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const { isSuperAdmin } = useUserRole();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -171,6 +173,9 @@ export default function AdminUsersPage() {
   };
 
   const filteredUsers = users.filter(user => {
+    // Regular admins cannot see super_admins
+    if (!isSuperAdmin && user.role === 'super_admin') return false;
+    
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          user.username.toLowerCase().includes(searchQuery.toLowerCase());
@@ -257,6 +262,21 @@ export default function AdminUsersPage() {
 
   const handleChangeRole = async (userId?: string) => {
     const targetIds = userId ? [userId] : selectedUsers;
+
+    // Regular admins cannot assign super_admin role
+    if (!isSuperAdmin && selectedRole === 'super_admin') {
+      toast.error('Only super admins can assign the super_admin role');
+      return;
+    }
+
+    // Regular admins cannot modify other admins
+    if (!isSuperAdmin) {
+      const targetUsers = users.filter(u => targetIds.includes(u.id));
+      if (targetUsers.some(u => u.role === 'admin' || u.role === 'super_admin')) {
+        toast.error('You cannot change roles of other admins');
+        return;
+      }
+    }
     
     try {
       for (const id of targetIds) {
@@ -419,7 +439,7 @@ export default function AdminUsersPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="client">Client</SelectItem>
               </SelectContent>
@@ -542,29 +562,37 @@ export default function AdminUsersPage() {
                           <Eye className="w-4 h-4 mr-2" />
                           View Profile
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => openUserAction(user.id, 'role')}>
-                          <Shield className="w-4 h-4 mr-2" />
-                          Change Role
-                        </DropdownMenuItem>
+                        {/* Regular admins can't change roles of other admins */}
+                        {(isSuperAdmin || user.role === 'client') && (
+                          <DropdownMenuItem onClick={() => openUserAction(user.id, 'role')}>
+                            <Shield className="w-4 h-4 mr-2" />
+                            Change Role
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => openUserAction(user.id, 'email')}>
                           <Mail className="w-4 h-4 mr-2" />
                           Send Email
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem 
-                          className="text-warning"
-                          onClick={() => openUserAction(user.id, 'suspend')}
-                        >
-                          <Ban className="w-4 h-4 mr-2" />
-                          {user.status === 'suspended' ? 'Unsuspend User' : 'Suspend User'}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => openUserAction(user.id, 'delete')}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
+                        {/* Regular admins can't suspend/delete other admins */}
+                        {(isSuperAdmin || user.role === 'client') && (
+                          <>
+                            <DropdownMenuItem 
+                              className="text-warning"
+                              onClick={() => openUserAction(user.id, 'suspend')}
+                            >
+                              <Ban className="w-4 h-4 mr-2" />
+                              {user.status === 'suspended' ? 'Unsuspend User' : 'Suspend User'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => openUserAction(user.id, 'delete')}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -600,7 +628,7 @@ export default function AdminUsersPage() {
               <SelectContent>
                 <SelectItem value="client">Client</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
+                {isSuperAdmin && <SelectItem value="super_admin">Super Admin</SelectItem>}
               </SelectContent>
             </Select>
           </div>
