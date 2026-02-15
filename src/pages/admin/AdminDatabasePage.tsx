@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Database, Key, Copy, AlertTriangle, Pencil, Save, X, RotateCcw, Wifi, WifiOff, Loader2, CheckCircle } from 'lucide-react';
+import { Database, Key, Copy, AlertTriangle, Pencil, Save, X, RotateCcw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { supabase } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/integrations/supabase/client';
 import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from '@/lib/dynamic-supabase';
 import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
-import { FullBackupExportSection } from '@/components/settings/FullBackupExportSection';
 
 export default function AdminDatabasePage() {
   const config = getSupabaseConfig();
@@ -21,8 +19,6 @@ export default function AdminDatabasePage() {
   const [editUrl, setEditUrl] = useState(config.url);
   const [editAnonKey, setEditAnonKey] = useState(config.anonKey);
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -34,52 +30,9 @@ export default function AdminDatabasePage() {
     setEditUrl(config.url);
     setEditAnonKey(config.anonKey);
     setEditing(true);
-    setTestResult(null);
   };
 
-  const handleCancel = () => {
-    setEditing(false);
-    setTestResult(null);
-  };
-
-  const handleTestConnection = async () => {
-    const url = (editing ? editUrl : config.url).trim();
-    const key = (editing ? editAnonKey : config.anonKey).trim();
-
-    if (!url || !key) {
-      toast.error('URL and Anon Key are required to test');
-      return;
-    }
-
-    setTesting(true);
-    setTestResult(null);
-
-    try {
-      const testClient = createClient(url, key);
-      // Try a simple health-check query
-      const { error } = await testClient.from('profiles').select('id').limit(1);
-      
-      if (error) {
-        // Some errors are acceptable (e.g., RLS blocking) — the connection itself worked
-        if (error.code === 'PGRST301' || error.code === '42501' || error.message.includes('JWT')) {
-          // Auth/RLS error means the connection is valid but auth is needed
-          setTestResult('success');
-          toast.success('Connection successful! (Auth required for data access)');
-        } else {
-          setTestResult('error');
-          toast.error(`Connection failed: ${error.message}`);
-        }
-      } else {
-        setTestResult('success');
-        toast.success('Connection successful! Database is reachable.');
-      }
-    } catch (err: any) {
-      setTestResult('error');
-      toast.error(`Connection failed: ${err.message || 'Unable to reach the server'}`);
-    } finally {
-      setTesting(false);
-    }
-  };
+  const handleCancel = () => setEditing(false);
 
   const handleSave = async () => {
     if (!editProjectId.trim() || !editUrl.trim() || !editAnonKey.trim()) {
@@ -89,6 +42,7 @@ export default function AdminDatabasePage() {
 
     setSaving(true);
     try {
+      // Save to admin_settings for persistence
       const { data: { user } } = await supabase.auth.getUser();
       await supabase.from('admin_settings').upsert(
         {
@@ -104,6 +58,7 @@ export default function AdminDatabasePage() {
         { onConflict: 'setting_key' }
       );
 
+      // Save to localStorage for immediate effect
       saveSupabaseConfig({
         projectId: editProjectId.trim(),
         url: editUrl.trim(),
@@ -119,11 +74,7 @@ export default function AdminDatabasePage() {
     }
   };
 
-  const handleReset = async () => {
-    // Also remove from admin_settings
-    try {
-      await supabase.from('admin_settings').delete().eq('setting_key', 'custom_supabase_connection');
-    } catch {}
+  const handleReset = () => {
     clearSupabaseConfig();
     toast.success('Reset to default credentials. Reloading...');
     setTimeout(() => window.location.reload(), 1500);
@@ -160,23 +111,6 @@ export default function AdminDatabasePage() {
               <CardDescription>Your database connection credentials — editable by super admin</CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTestConnection}
-                disabled={testing}
-              >
-                {testing ? (
-                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                ) : testResult === 'success' ? (
-                  <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
-                ) : testResult === 'error' ? (
-                  <WifiOff className="w-4 h-4 mr-1 text-destructive" />
-                ) : (
-                  <Wifi className="w-4 h-4 mr-1" />
-                )}
-                {testing ? 'Testing...' : testResult === 'success' ? 'Connected' : testResult === 'error' ? 'Failed' : 'Test Connection'}
-              </Button>
               {config.isOverride && !editing && (
                 <Button variant="ghost" size="sm" onClick={handleReset}>
                   <RotateCcw className="w-4 h-4 mr-1" /> Reset to Default
@@ -260,7 +194,6 @@ export default function AdminDatabasePage() {
       </Card>
 
       <SchemaExportSection />
-      <FullBackupExportSection />
     </div>
   );
 }

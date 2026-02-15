@@ -4,7 +4,7 @@ import { ClipboardList, User, Mail, Phone } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DataCollectionGateProps {
   blockId: string;
