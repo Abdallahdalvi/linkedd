@@ -63,6 +63,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { useUserRole } from '@/hooks/useUserRole';
 
 interface User {
@@ -108,7 +109,7 @@ export default function AdminUsersPage() {
     try {
       // Fetch all profiles with their roles
       const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+        .from(t('profiles'))
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -116,12 +117,12 @@ export default function AdminUsersPage() {
 
       // Fetch all user roles
       const { data: rolesData } = await supabase
-        .from('user_roles')
+        .from(t('user_roles'))
         .select('user_id, role');
 
       // Fetch link profiles for usernames and views
       const { data: linkProfilesData } = await supabase
-        .from('link_profiles')
+        .from(t('link_profiles'))
         .select('user_id, username, total_views');
 
       // Map roles by user_id
@@ -281,10 +282,10 @@ export default function AdminUsersPage() {
     try {
       for (const id of targetIds) {
         // Delete existing roles
-        await supabase.from('user_roles').delete().eq('user_id', id);
+        await supabase.from(t('user_roles')).delete().eq('user_id', id);
         
         // Insert new role
-        await supabase.from('user_roles').insert({
+        await supabase.from(t('user_roles')).insert({
           user_id: id,
           role: selectedRole as 'super_admin' | 'admin' | 'client',
         });
@@ -310,7 +311,7 @@ export default function AdminUsersPage() {
         const newStatus = user?.status === 'suspended' ? false : true;
         
         await supabase
-          .from('profiles')
+          .from(t('profiles'))
           .update({ is_suspended: newStatus })
           .eq('id', id);
       }

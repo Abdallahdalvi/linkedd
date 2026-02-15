@@ -30,6 +30,7 @@ import {
   FileCode,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { isMainDomain } from '@/config/domain';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -201,7 +202,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
     const fetchProfile = async () => {
       // First check if profile exists and if it's password protected
       const { data: profileData, error: profileError } = await supabase
-        .from('link_profiles')
+        .from(t('link_profiles'))
         .select('id, username, display_name, bio, avatar_url, cover_url, location, background_type, background_value, social_links, custom_colors, is_public, is_password_protected, total_views, meta_pixel_id, google_ads_id')
         .eq('username', username)
         .eq('is_public', true)
@@ -242,7 +243,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
       
       if (isOnMainDomain && !forcedUsername) {
         const { data: primaryDomain } = await supabase
-          .from('custom_domains')
+          .from(t('custom_domains'))
           .select('domain')
           .eq('profile_id', profileData.id)
           .eq('status', 'active')
@@ -260,7 +261,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
       const visitorId = getVisitorId();
       const newViewCount = (profileData.total_views || 0) + 1;
       await Promise.all([
-        supabase.from('analytics_events').insert({
+        supabase.from(t('analytics_events')).insert({
           profile_id: profileData.id,
           event_type: 'view',
           device_type: getDeviceType(),
@@ -269,14 +270,14 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
           visitor_id: visitorId,
         }),
         supabase
-          .from('link_profiles')
+          .from(t('link_profiles'))
           .update({ total_views: newViewCount })
           .eq('id', profileData.id),
       ]);
 
       // Fetch blocks
       const { data: blocksData } = await supabase
-        .from('blocks')
+        .from(t('blocks'))
         .select('*')
         .eq('profile_id', profileData.id)
         .eq('is_enabled', true)
@@ -347,7 +348,7 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
     
     // Fire tracking in background, don't wait for it
     Promise.all([
-      supabase.from('analytics_events').insert({
+      supabase.from(t('analytics_events')).insert({
         profile_id: profile?.id,
         block_id: block.id,
         event_type: 'click',
@@ -358,14 +359,14 @@ export default function PublicProfilePage({ forcedUsername }: PublicProfilePageP
       }),
       // Get current clicks then increment
       supabase
-        .from('blocks')
+        .from(t('blocks'))
         .select('total_clicks')
         .eq('id', block.id)
         .single()
         .then(({ data }) => {
           const currentClicks = data?.total_clicks || 0;
           return supabase
-            .from('blocks')
+            .from(t('blocks'))
             .update({ total_clicks: currentClicks + 1 })
             .eq('id', block.id);
         }),
@@ -762,7 +763,7 @@ function BlockRenderer({ block, theme, onClick, profileId, onLeadSubmit }: { blo
     const visitorId = localStorage.getItem('linksdc_visitor_id') || `v_${Date.now()}`;
     
     Promise.all([
-      supabase.from('analytics_events').insert({
+      supabase.from(t('analytics_events')).insert({
         profile_id: profileId,
         block_id: block.id,
         event_type: 'download',
@@ -772,14 +773,14 @@ function BlockRenderer({ block, theme, onClick, profileId, onLeadSubmit }: { blo
         visitor_id: visitorId,
       }),
       supabase
-        .from('blocks')
+        .from(t('blocks'))
         .select('total_clicks')
         .eq('id', block.id)
         .single()
         .then(({ data }) => {
           const currentClicks = data?.total_clicks || 0;
           return supabase
-            .from('blocks')
+            .from(t('blocks'))
             .update({ total_clicks: currentClicks + 1 })
             .eq('id', block.id);
         }),

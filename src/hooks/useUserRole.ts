@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { t } from '@/lib/schema-prefix';
 
 type AppRole = 'super_admin' | 'admin' | 'client';
 
@@ -18,7 +19,7 @@ export function useUserRole() {
 
     const fetchRoles = async () => {
       const { data, error } = await supabase
-        .from('user_roles')
+        .from(t('user_roles'))
         .select('role')
         .eq('user_id', user.id);
 

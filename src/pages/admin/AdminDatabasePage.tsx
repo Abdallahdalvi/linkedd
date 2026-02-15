@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from '@/lib/dynamic-supabase';
 import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
 
@@ -44,7 +45,7 @@ export default function AdminDatabasePage() {
     try {
       // Save to admin_settings for persistence
       const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from('admin_settings').upsert(
+      await supabase.from(t('admin_settings')).upsert(
         {
           setting_key: 'custom_supabase_connection',
           setting_value: {

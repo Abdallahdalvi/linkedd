@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { useAuth } from '@/contexts/AuthContext';
 import { Block } from '@/hooks/useLinkProfile';
 import { Button } from '@/components/ui/button';
@@ -56,7 +57,7 @@ export default function DashboardLeadsPage({ profile, blocks }: DashboardLeadsPa
   const fetchLeads = async () => {
     setLoading(true);
     const { data, error } = await supabase
-      .from('block_leads')
+      .from(t('block_leads'))
       .select('*')
       .eq('profile_id', profile.id)
       .order('created_at', { ascending: false });
@@ -108,7 +109,7 @@ export default function DashboardLeadsPage({ profile, blocks }: DashboardLeadsPa
   });
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from('block_leads').delete().eq('id', id);
+    const { error } = await supabase.from(t('block_leads')).delete().eq('id', id);
     if (!error) {
       setLeads((prev) => prev.filter((l) => l.id !== id));
       toast.success('Lead deleted');

@@ -38,6 +38,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useUserRole } from '@/hooks/useUserRole';
@@ -226,7 +227,7 @@ export default function DashboardSettingsPage({
       // Get blocks
       if (profile?.id) {
         const { data: blocks } = await supabase
-          .from('blocks')
+          .from(t('blocks'))
           .select('*')
           .eq('profile_id', profile.id);
         
@@ -275,13 +276,13 @@ export default function DashboardSettingsPage({
       if (profile?.id) {
         // Delete blocks first
         await supabase
-          .from('blocks')
+          .from(t('blocks'))
           .delete()
           .eq('profile_id', profile.id);
 
         // Delete profile
         await supabase
-          .from('link_profiles')
+          .from(t('link_profiles'))
           .delete()
           .eq('id', profile.id);
       }
