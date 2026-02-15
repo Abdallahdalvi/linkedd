@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { getSupabaseConfig, saveSupabaseConfig, clearSupabaseConfig } from '@/lib/dynamic-supabase';
 import { SchemaExportSection } from '@/components/settings/SchemaExportSection';
+import { FullBackupExportSection } from '@/components/settings/FullBackupExportSection';
 
 export default function AdminDatabasePage() {
   const config = getSupabaseConfig();
@@ -194,6 +195,7 @@ export default function AdminDatabasePage() {
       </Card>
 
       <SchemaExportSection />
+      <FullBackupExportSection />
     </div>
   );
 }
