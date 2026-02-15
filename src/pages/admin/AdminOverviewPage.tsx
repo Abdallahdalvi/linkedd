@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 
 interface Stats {
   totalUsers: number;
@@ -70,18 +69,18 @@ export default function AdminOverviewPage() {
     try {
       // Fetch total users count
       const { count: usersCount } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .select('*', { count: 'exact', head: true });
 
       // Fetch total profile views
       const { data: viewsData } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('id')
         .eq('event_type', 'page_view');
 
       // Fetch total link clicks
       const { data: clicksData } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('id')
         .eq('event_type', 'link_click');
 
@@ -98,7 +97,7 @@ export default function AdminOverviewPage() {
 
       // Fetch recent users with their link profiles
       const { data: profilesData } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .select('id, email, full_name, is_suspended, created_at')
         .order('created_at', { ascending: false })
         .limit(5);
@@ -107,7 +106,7 @@ export default function AdminOverviewPage() {
         const recentUsersWithProfiles = await Promise.all(
           profilesData.map(async (profile) => {
             const { data: linkProfile } = await supabase
-              .from(t('link_profiles'))
+              .from('link_profiles')
               .select('username, total_views')
               .eq('user_id', profile.id)
               .maybeSingle();
@@ -127,7 +126,7 @@ export default function AdminOverviewPage() {
 
       // Fetch top profiles by views
       const { data: topProfilesData } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .select('id, username, display_name, total_views')
         .order('total_views', { ascending: false })
         .limit(5);
@@ -136,7 +135,7 @@ export default function AdminOverviewPage() {
         const topProfilesWithClicks = await Promise.all(
           topProfilesData.map(async (profile, index) => {
             const { count: clickCount } = await supabase
-              .from(t('analytics_events'))
+              .from('analytics_events')
               .select('*', { count: 'exact', head: true })
               .eq('profile_id', profile.id)
               .eq('event_type', 'link_click');

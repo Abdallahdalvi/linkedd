@@ -30,7 +30,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 
 interface TopProfile {
   rank: number;
@@ -85,19 +84,19 @@ export default function AdminAnalyticsPage() {
     try {
       // Fetch total page views
       const { data: viewsData } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('id')
         .eq('event_type', 'page_view');
 
       // Fetch total clicks
       const { data: clicksData } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('id')
         .eq('event_type', 'link_click');
 
       // Fetch active users count
       const { count: usersCount } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .select('*', { count: 'exact', head: true })
         .eq('is_suspended', false);
 
@@ -107,7 +106,7 @@ export default function AdminAnalyticsPage() {
 
       // Fetch top profiles by views
       const { data: profilesData } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .select('id, username, display_name, total_views')
         .order('total_views', { ascending: false })
         .limit(8);
@@ -116,7 +115,7 @@ export default function AdminAnalyticsPage() {
         const profilesWithClicks = await Promise.all(
           profilesData.map(async (profile, index) => {
             const { count: clickCount } = await supabase
-              .from(t('analytics_events'))
+              .from('analytics_events')
               .select('*', { count: 'exact', head: true })
               .eq('profile_id', profile.id)
               .eq('event_type', 'link_click');
@@ -140,7 +139,7 @@ export default function AdminAnalyticsPage() {
 
       // Fetch country data
       const { data: countryAnalytics } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('country')
         .not('country', 'is', null);
 
@@ -178,7 +177,7 @@ export default function AdminAnalyticsPage() {
 
       // Fetch device data
       const { data: deviceAnalytics } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('device_type')
         .not('device_type', 'is', null);
 

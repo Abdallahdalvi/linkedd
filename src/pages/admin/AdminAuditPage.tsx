@@ -35,7 +35,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 import { toast } from 'sonner';
 
 interface AuditLog {
@@ -86,7 +85,7 @@ export default function AdminAuditPage() {
   const fetchAuditLogs = async () => {
     try {
       const { data, error } = await supabase
-        .from(t('audit_logs'))
+        .from('audit_logs')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -96,7 +95,7 @@ export default function AdminAuditPage() {
       // Fetch user emails for user_ids
       const userIds = [...new Set((data || []).map(log => log.user_id).filter(Boolean))];
       const { data: profilesData } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .select('id, email')
         .in('id', userIds);
 
@@ -107,7 +106,7 @@ export default function AdminAuditPage() {
 
       // Fetch user roles
       const { data: rolesData } = await supabase
-        .from(t('user_roles'))
+        .from('user_roles')
         .select('user_id, role')
         .in('user_id', userIds);
 

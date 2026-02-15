@@ -18,7 +18,6 @@ import {
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 
 type ExportFormat = 'json' | 'postgresql' | 'mysql' | 'sqlite' | 'csv';
 
@@ -465,7 +464,7 @@ export default function DatabaseExportSection({ profile }: DatabaseExportSection
       
       if (profile?.id) {
         const { data: blocks } = await supabase
-          .from(t('blocks'))
+          .from('blocks')
           .select('*')
           .eq('profile_id', profile.id)
           .order('position', { ascending: true });

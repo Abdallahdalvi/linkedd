@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 
 interface AdImpressionData {
   totalImpressions: number;
@@ -78,7 +77,7 @@ export function useAdAnalytics(profileId: string | undefined, dateRange: DateRan
 
       // Fetch ad impressions
       let impressionQuery = supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('*, blocks(title)')
         .eq('profile_id', profileId)
         .eq('event_type', 'ad_impression');
@@ -91,7 +90,7 @@ export function useAdAnalytics(profileId: string | undefined, dateRange: DateRan
 
       // Fetch ad clicks
       let clickQuery = supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('*, blocks(title)')
         .eq('profile_id', profileId)
         .eq('event_type', 'ad_click');
@@ -104,7 +103,7 @@ export function useAdAnalytics(profileId: string | undefined, dateRange: DateRan
 
       // Fetch ad rewards (rewarded video completions)
       let rewardQuery = supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('*, blocks(title)')
         .eq('profile_id', profileId)
         .eq('event_type', 'ad_reward');
@@ -255,7 +254,7 @@ export async function trackAdEvent(
     const visitorId = localStorage.getItem('visitor_id') || crypto.randomUUID();
     localStorage.setItem('visitor_id', visitorId);
 
-    await supabase.from(t('analytics_events')).insert({
+    await supabase.from('analytics_events').insert({
       profile_id: profileId,
       block_id: blockId,
       event_type: eventType,

@@ -17,7 +17,6 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 import { toast } from 'sonner';
 
 interface SuspendedProfile {
@@ -50,7 +49,7 @@ export default function AdminModerationPage() {
     try {
       // Fetch suspended users
       const { data: suspendedData } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .select('id, email, updated_at, is_suspended')
         .eq('is_suspended', true);
 
@@ -58,7 +57,7 @@ export default function AdminModerationPage() {
         const suspendedWithProfiles = await Promise.all(
           suspendedData.map(async (profile) => {
             const { data: linkProfile } = await supabase
-              .from(t('link_profiles'))
+              .from('link_profiles')
               .select('username, display_name')
               .eq('user_id', profile.id)
               .maybeSingle();
@@ -77,7 +76,7 @@ export default function AdminModerationPage() {
 
       // Fetch blocks with external URLs (potential flagged content)
       const { data: blocksData } = await supabase
-        .from(t('blocks'))
+        .from('blocks')
         .select(`
           id,
           title,
@@ -109,7 +108,7 @@ export default function AdminModerationPage() {
   const handleUnsuspend = async (userId: string) => {
     try {
       const { error } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .update({ is_suspended: false })
         .eq('id', userId);
 
@@ -125,7 +124,7 @@ export default function AdminModerationPage() {
   const handleRemoveBlock = async (blockId: string) => {
     try {
       const { error } = await supabase
-        .from(t('blocks'))
+        .from('blocks')
         .delete()
         .eq('id', blockId);
 

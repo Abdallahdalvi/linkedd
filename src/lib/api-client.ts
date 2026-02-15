@@ -12,7 +12,6 @@
 
 import { supabase as defaultSupabase } from '@/integrations/supabase/client';
 import { getDynamicSupabaseClient, getSupabaseConfig } from '@/lib/dynamic-supabase';
-import { t } from '@/lib/schema-prefix';
 
 // Use dynamic client if override exists, otherwise default
 function getSupabase() {
@@ -136,7 +135,7 @@ const authClient = {
   async getUserRoles(userId: string): Promise<string[]> {
     if (API_MODE === 'supabase') {
       const { data } = await supabase
-        .from(t('user_roles'))
+        .from('user_roles')
         .select('role')
         .eq('user_id', userId);
       return (data || []).map((r) => r.role);
@@ -151,7 +150,7 @@ const profilesClient = {
   async getByUsername(username: string) {
     if (API_MODE === 'supabase') {
       const { data, error } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .select('*')
         .eq('username', username)
         .eq('is_public', true)
@@ -168,7 +167,7 @@ const profilesClient = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
       const { data } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -183,7 +182,7 @@ const profilesClient = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
       const { data, error } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .insert({ user_id: user.id, username })
         .select()
         .single();
@@ -199,7 +198,7 @@ const profilesClient = {
   async update(profileId: string, updates: Record<string, unknown>) {
     if (API_MODE === 'supabase') {
       const { data, error } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .update(updates)
         .eq('id', profileId)
         .select()
@@ -219,7 +218,7 @@ const blocksClient = {
   async getByProfile(profileId: string, enabledOnly = false) {
     if (API_MODE === 'supabase') {
       let query = supabase
-        .from(t('blocks'))
+        .from('blocks')
         .select('*')
         .eq('profile_id', profileId)
         .order('position', { ascending: true });
@@ -236,7 +235,7 @@ const blocksClient = {
   async create(block: Record<string, unknown>) {
     if (API_MODE === 'supabase') {
       const { data, error } = await supabase
-        .from(t('blocks'))
+        .from('blocks')
         .insert(block as any)
         .select()
         .single();
@@ -252,7 +251,7 @@ const blocksClient = {
   async update(blockId: string, updates: Record<string, unknown>) {
     if (API_MODE === 'supabase') {
       const { data, error } = await supabase
-        .from(t('blocks'))
+        .from('blocks')
         .update(updates)
         .eq('id', blockId)
         .select()
@@ -268,7 +267,7 @@ const blocksClient = {
 
   async delete(blockId: string) {
     if (API_MODE === 'supabase') {
-      const { error } = await supabase.from(t('blocks')).delete().eq('id', blockId);
+      const { error } = await supabase.from('blocks').delete().eq('id', blockId);
       if (error) throw error;
     } else {
       await restFetch(`/api/my/blocks/${blockId}`, { method: 'DELETE' });
@@ -278,7 +277,7 @@ const blocksClient = {
   async reorder(order: { id: string; position: number }[]) {
     if (API_MODE === 'supabase') {
       for (const item of order) {
-        await supabase.from(t('blocks')).update({ position: item.position }).eq('id', item.id);
+        await supabase.from('blocks').update({ position: item.position }).eq('id', item.id);
       }
     } else {
       await restFetch('/api/my/blocks/reorder', {
@@ -293,7 +292,7 @@ const blocksClient = {
 const leadsClient = {
   async submit(lead: { block_id: string; profile_id: string; visitor_id?: string; name?: string; email?: string; phone?: string }) {
     if (API_MODE === 'supabase') {
-      const { error } = await supabase.from(t('block_leads')).insert(lead);
+      const { error } = await supabase.from('block_leads').insert(lead);
       if (error) throw error;
     } else {
       await restFetch('/api/leads', {
@@ -306,7 +305,7 @@ const leadsClient = {
   async getMine(profileId: string) {
     if (API_MODE === 'supabase') {
       const { data, error } = await supabase
-        .from(t('block_leads'))
+        .from('block_leads')
         .select('*')
         .eq('profile_id', profileId)
         .order('created_at', { ascending: false });
@@ -318,7 +317,7 @@ const leadsClient = {
 
   async delete(leadId: string) {
     if (API_MODE === 'supabase') {
-      const { error } = await supabase.from(t('block_leads')).delete().eq('id', leadId);
+      const { error } = await supabase.from('block_leads').delete().eq('id', leadId);
       if (error) throw error;
     } else {
       await restFetch(`/api/my/leads/${leadId}`, { method: 'DELETE' });
@@ -330,7 +329,7 @@ const leadsClient = {
 const analyticsClient = {
   async track(event: { profile_id: string; block_id?: string; event_type: string; visitor_id?: string; referrer?: string; browser?: string; device_type?: string; country?: string; city?: string }) {
     if (API_MODE === 'supabase') {
-      await supabase.from(t('analytics_events')).insert(event);
+      await supabase.from('analytics_events').insert(event);
     } else {
       await restFetch('/api/analytics', {
         method: 'POST',
@@ -342,7 +341,7 @@ const analyticsClient = {
   async getMine(profileId: string) {
     if (API_MODE === 'supabase') {
       const { data } = await supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('*')
         .eq('profile_id', profileId)
         .order('created_at', { ascending: false })
@@ -371,7 +370,7 @@ const adminClient = {
   async getUsers() {
     if (API_MODE === 'supabase') {
       const { data } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .select('*, user_roles(role)')
         .order('created_at', { ascending: false });
       return data || [];
@@ -381,8 +380,8 @@ const adminClient = {
 
   async setUserRole(userId: string, role: string) {
     if (API_MODE === 'supabase') {
-      await supabase.from(t('user_roles')).delete().eq('user_id', userId);
-      const { error } = await supabase.from(t('user_roles')).insert({ user_id: userId, role: role as any });
+      await supabase.from('user_roles').delete().eq('user_id', userId);
+      const { error } = await supabase.from('user_roles').insert({ user_id: userId, role: role as any });
       if (error) throw error;
     } else {
       await restFetch(`/api/admin/users/${userId}/role`, {
@@ -395,7 +394,7 @@ const adminClient = {
   async suspendUser(userId: string, suspended: boolean) {
     if (API_MODE === 'supabase') {
       const { error } = await supabase
-        .from(t('profiles'))
+        .from('profiles')
         .update({ is_suspended: suspended })
         .eq('id', userId);
       if (error) throw error;
@@ -409,7 +408,7 @@ const adminClient = {
 
   async getSettings() {
     if (API_MODE === 'supabase') {
-      const { data } = await supabase.from(t('admin_settings')).select('*');
+      const { data } = await supabase.from('admin_settings').select('*');
       return data || [];
     }
     return restFetch('/api/admin/settings');
@@ -418,7 +417,7 @@ const adminClient = {
   async updateSetting(key: string, value: unknown) {
     if (API_MODE === 'supabase') {
       const { error } = await supabase
-        .from(t('admin_settings'))
+        .from('admin_settings')
         .upsert({ setting_key: key, setting_value: value as any }, { onConflict: 'setting_key' });
       if (error) throw error;
     } else {

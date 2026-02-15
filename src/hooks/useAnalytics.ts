@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 
 interface CountryData {
   country: string;
@@ -185,7 +184,7 @@ export function useAnalytics(profileId: string | undefined, dateRange: DateRange
       const startDate = getDateFromRange(dateRange);
       
       let query = supabase
-        .from(t('analytics_events'))
+        .from('analytics_events')
         .select('*')
         .eq('profile_id', profileId);
 

@@ -40,7 +40,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
-import { t } from '@/lib/schema-prefix';
 import { toast } from 'sonner';
 
 interface DomainWithProfile {
@@ -75,7 +74,7 @@ export default function AdminDomainsPage() {
   const fetchDomains = async () => {
     try {
       const { data, error } = await supabase
-        .from(t('custom_domains'))
+        .from('custom_domains')
         .select(`
           *,
           link_profiles!inner(username, display_name)
@@ -108,7 +107,7 @@ export default function AdminDomainsPage() {
   const fetchProfiles = async () => {
     try {
       const { data, error } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .select('id, username, display_name')
         .order('username');
 
@@ -175,7 +174,7 @@ export default function AdminDomainsPage() {
       const verificationToken = crypto.randomUUID().slice(0, 8);
       
       const { error } = await supabase
-        .from(t('custom_domains'))
+        .from('custom_domains')
         .insert({
           domain: newDomain.toLowerCase().trim(),
           profile_id: selectedProfileId,
@@ -200,7 +199,7 @@ export default function AdminDomainsPage() {
   const handleVerifyDomain = async (domainId: string) => {
     try {
       const { error } = await supabase
-        .from(t('custom_domains'))
+        .from('custom_domains')
         .update({
           status: 'active',
           dns_verified: true,
@@ -219,7 +218,7 @@ export default function AdminDomainsPage() {
   const handleRemoveDomain = async (domainId: string) => {
     try {
       const { error } = await supabase
-        .from(t('custom_domains'))
+        .from('custom_domains')
         .delete()
         .eq('id', domainId);
 

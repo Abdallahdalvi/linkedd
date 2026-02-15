@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Json } from '@/integrations/supabase/types';
-import { t } from '@/lib/schema-prefix';
 
 export interface LinkProfile {
   id: string;
@@ -71,7 +70,7 @@ export function useLinkProfile() {
 
     const fetchProfile = async () => {
       const { data: profileData, error: profileError } = await supabase
-        .from(t('link_profiles'))
+        .from('link_profiles')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
@@ -85,7 +84,7 @@ export function useLinkProfile() {
         });
 
         const { data: blocksData } = await supabase
-          .from(t('blocks'))
+          .from('blocks')
           .select('*')
           .eq('profile_id', profileData.id)
           .order('position', { ascending: true });
@@ -108,7 +107,7 @@ export function useLinkProfile() {
     if (!user) return null;
 
     const { data, error } = await supabase
-      .from(t('link_profiles'))
+      .from('link_profiles')
       .insert({
         user_id: user.id,
         username,
@@ -134,7 +133,7 @@ export function useLinkProfile() {
     if (!profile) return;
 
     const { data, error } = await supabase
-      .from(t('link_profiles'))
+      .from('link_profiles')
       .update(updates)
       .eq('id', profile.id)
       .select()
@@ -192,7 +191,7 @@ export function useLinkProfile() {
     };
 
     const { data, error } = await supabase
-      .from(t('blocks'))
+      .from('blocks')
       .insert(insertData)
       .select()
       .single();
@@ -231,7 +230,7 @@ export function useLinkProfile() {
     if (updates.button_style !== undefined) updateData.button_style = updates.button_style;
     
     const { data, error } = await supabase
-      .from(t('blocks'))
+      .from('blocks')
       .update(updateData)
       .eq('id', blockId)
       .select()
@@ -248,7 +247,7 @@ export function useLinkProfile() {
 
   const deleteBlock = async (blockId: string) => {
     const { error } = await supabase
-      .from(t('blocks'))
+      .from('blocks')
       .delete()
       .eq('id', blockId);
 
@@ -267,7 +266,7 @@ export function useLinkProfile() {
 
     for (const update of updates) {
       await supabase
-        .from(t('blocks'))
+        .from('blocks')
         .update({ position: update.position })
         .eq('id', update.id);
     }
