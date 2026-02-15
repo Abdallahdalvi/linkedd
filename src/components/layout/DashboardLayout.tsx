@@ -139,6 +139,23 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </Link>
               );
             })}
+
+            {isAdmin && (
+              <>
+                <div className="my-3 border-t border-sidebar-border" />
+                <Link
+                  to="/admin"
+                  onClick={() => setSidebarOpen(false)}
+                  className={`sidebar-link ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
+                >
+                  <Shield className="w-5 h-5" />
+                  <span>Admin Panel</span>
+                  {location.pathname.startsWith('/admin') && (
+                    <ChevronRight className="w-4 h-4 ml-auto" />
+                  )}
+                </Link>
+              </>
+            )}
           </nav>
 
           {/* User Section */}
