@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { t } from '@/lib/schema-prefix';
 
 export interface CustomDomain {
   id: string;
@@ -28,7 +29,7 @@ export function useCustomDomains(profileId?: string) {
 
     try {
       const { data, error } = await supabase
-        .from('custom_domains')
+        .from(t('custom_domains'))
         .select('*')
         .eq('profile_id', profileId)
         .order('created_at', { ascending: true });
@@ -61,7 +62,7 @@ export function useCustomDomains(profileId?: string) {
       // Check if any domain already exists
       for (const d of domainsToAdd) {
         const { data: existing } = await supabase
-          .from('custom_domains')
+          .from(t('custom_domains'))
           .select('id')
           .eq('domain', d)
           .maybeSingle();
@@ -78,7 +79,7 @@ export function useCustomDomains(profileId?: string) {
         const verificationToken = crypto.randomUUID().slice(0, 8);
         
         const { error } = await supabase
-          .from('custom_domains')
+          .from(t('custom_domains'))
           .insert({
             profile_id: profileId,
             domain: d,
@@ -102,7 +103,7 @@ export function useCustomDomains(profileId?: string) {
     try {
       // Update status to verifying
       await supabase
-        .from('custom_domains')
+        .from(t('custom_domains'))
         .update({ status: 'verifying' })
         .eq('id', domainId);
 
@@ -131,7 +132,7 @@ export function useCustomDomains(profileId?: string) {
       const domainToRemove = domains.find(d => d.id === domainId);
       
       const { error } = await supabase
-        .from('custom_domains')
+        .from(t('custom_domains'))
         .delete()
         .eq('id', domainId);
 
@@ -142,7 +143,7 @@ export function useCustomDomains(profileId?: string) {
         const nextDomain = domains.find(d => d.id !== domainId);
         if (nextDomain) {
           await supabase
-            .from('custom_domains')
+            .from(t('custom_domains'))
             .update({ is_primary: true })
             .eq('id', nextDomain.id);
         }
@@ -160,13 +161,13 @@ export function useCustomDomains(profileId?: string) {
     try {
       // First, unset all as primary
       await supabase
-        .from('custom_domains')
+        .from(t('custom_domains'))
         .update({ is_primary: false })
         .eq('profile_id', profileId);
 
       // Then set the selected one as primary
       const { error } = await supabase
-        .from('custom_domains')
+        .from(t('custom_domains'))
         .update({ is_primary: true })
         .eq('id', domainId);
 
@@ -185,7 +186,7 @@ export function useCustomDomains(profileId?: string) {
       const newToken = crypto.randomUUID().slice(0, 8);
       
       const { error } = await supabase
-        .from('custom_domains')
+        .from(t('custom_domains'))
         .update({ 
           verification_token: newToken,
           status: 'pending',
@@ -219,7 +220,7 @@ export function useCustomDomains(profileId?: string) {
 export async function getProfileByDomain(domain: string): Promise<string | null> {
   try {
     const { data, error } = await supabase
-      .from('custom_domains')
+      .from(t('custom_domains'))
       .select('profile_id, link_profiles!inner(username)')
       .eq('domain', domain.toLowerCase())
       .eq('status', 'active')

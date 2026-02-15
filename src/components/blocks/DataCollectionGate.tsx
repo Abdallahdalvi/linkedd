@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 
 interface DataCollectionGateProps {
   blockId: string;
@@ -60,7 +61,7 @@ export default function DataCollectionGate({
 
     setSubmitting(true);
     try {
-      const { error: insertError } = await supabase.from('block_leads').insert({
+      const { error: insertError } = await supabase.from(t('block_leads')).insert({
         block_id: blockId,
         profile_id: profileId,
         visitor_id: visitorId,

@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Database, Download, FileArchive, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { useAuth } from '@/contexts/AuthContext';
 
 type ExportFormat = 'postgresql' | 'mysql' | 'sqlite' | 'json';
@@ -38,14 +39,14 @@ export function FullBackupExportSection() {
       auditLogsRes,
       adminSettingsRes
     ] = await Promise.all([
-      supabase.from('profiles').select('*'),
-      supabase.from('user_roles').select('*'),
-      supabase.from('link_profiles').select('*'),
-      supabase.from('blocks').select('*'),
-      supabase.from('custom_domains').select('*'),
-      supabase.from('analytics_events').select('*').limit(10000),
-      supabase.from('audit_logs').select('*').limit(10000),
-      supabase.from('admin_settings').select('*')
+      supabase.from(t('profiles')).select('*'),
+      supabase.from(t('user_roles')).select('*'),
+      supabase.from(t('link_profiles')).select('*'),
+      supabase.from(t('blocks')).select('*'),
+      supabase.from(t('custom_domains')).select('*'),
+      supabase.from(t('analytics_events')).select('*').limit(10000),
+      supabase.from(t('audit_logs')).select('*').limit(10000),
+      supabase.from(t('admin_settings')).select('*')
     ]);
 
     return {

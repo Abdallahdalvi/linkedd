@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { t } from '@/lib/schema-prefix';
 import { MAIN_DOMAIN, isDomainActive } from '@/config/domain';
 
 interface DomainRouterProps {
@@ -35,7 +36,7 @@ export function DomainRouter({ children }: DomainRouterProps) {
       // This is a custom domain - check if it's registered and active
       try {
         const { data, error } = await supabase
-          .from('custom_domains')
+          .from(t('custom_domains'))
           .select('profile_id, status, link_profiles!inner(username)')
           .eq('domain', currentHost.toLowerCase())
           .single();
@@ -103,7 +104,7 @@ export function useCustomDomainProfile(): CustomDomainData | null {
 
       try {
         const { data: domainData } = await supabase
-          .from('custom_domains')
+          .from(t('custom_domains'))
           .select('profile_id, status, link_profiles!inner(username)')
           .eq('domain', currentHost.toLowerCase())
           .single();
