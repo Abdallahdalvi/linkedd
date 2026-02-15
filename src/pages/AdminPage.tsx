@@ -10,6 +10,7 @@ import AdminDomainsPage from './admin/AdminDomainsPage';
 import AdminModerationPage from './admin/AdminModerationPage';
 import AdminAuditPage from './admin/AdminAuditPage';
 import AdminSettingsPage from './admin/AdminSettingsPage';
+import AdminDatabasePage from './admin/AdminDatabasePage';
 
 function SuperAdminOnly({ children }: { children: React.ReactNode }) {
   const { isSuperAdmin, loading } = useUserRole();
@@ -33,6 +34,7 @@ export default function AdminPage() {
         {/* Super Admin only routes */}
         <Route path="/design-system" element={<SuperAdminOnly><AdminDesignSystemPage /></SuperAdminOnly>} />
         <Route path="/blocks" element={<SuperAdminOnly><AdminBlocksPage /></SuperAdminOnly>} />
+        <Route path="/database" element={<SuperAdminOnly><AdminDatabasePage /></SuperAdminOnly>} />
         <Route path="/audit" element={<SuperAdminOnly><AdminAuditPage /></SuperAdminOnly>} />
         <Route path="/settings" element={<SuperAdminOnly><AdminSettingsPage /></SuperAdminOnly>} />
       </Routes>
