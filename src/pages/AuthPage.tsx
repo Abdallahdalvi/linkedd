@@ -81,8 +81,9 @@ export default function AuthPage() {
           setLoading(false);
           return;
         }
-        toast.success('Account created! Welcome to LinkBio.');
-        navigate('/dashboard', { replace: true });
+        toast.success('Account created! Please check your email to verify your account before signing in.');
+        setIsLogin(true);
+        setForm({ email: form.email, password: '', fullName: '' });
       }
     } catch (err) {
       toast.error('Something went wrong. Please try again.');
