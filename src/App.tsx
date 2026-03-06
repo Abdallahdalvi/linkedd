@@ -14,6 +14,7 @@ import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
 import PublicProfilePage from "./pages/PublicProfilePage";
 import NotFound from "./pages/NotFound";
+import EmailVerificationPage from "./pages/EmailVerificationPage";
 
 const queryClient = new QueryClient();
 

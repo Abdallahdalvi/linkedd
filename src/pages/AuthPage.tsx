@@ -81,9 +81,8 @@ export default function AuthPage() {
           setLoading(false);
           return;
         }
-        toast.success('Account created! Please check your email to verify your account before signing in.');
-        setIsLogin(true);
-        setForm({ email: form.email, password: '', fullName: '' });
+        toast.success('Account created! Please verify your email.');
+        navigate('/verify-email', { state: { email: form.email } });
       }
     } catch (err) {
       toast.error('Something went wrong. Please try again.');
