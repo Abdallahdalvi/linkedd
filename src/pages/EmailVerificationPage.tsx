@@ -76,7 +76,7 @@ export default function EmailVerificationPage() {
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-6 rounded-2xl bg-primary/10 flex items-center justify-center">
             {verified ? (
-              <CheckCircle2 className="w-8 h-8 text-green-500" />
+              <CheckCircle2 className="w-8 h-8 text-primary" />
             ) : (
               <Mail className="w-8 h-8 text-primary" />
             )}
